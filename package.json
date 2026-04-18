@@ -1,6 +1,10 @@
 {
-  "name": "santuario-maringa",
+  "name": "@santuario-maringa/monorepo",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -18,9 +22,5 @@
   "engines": {
     "node": ">=18"
   },
-  "packageManager": "bun@1.3.11",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+  "packageManager": "bun@1.3.11"
 }
