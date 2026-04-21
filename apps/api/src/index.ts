@@ -1,37 +1,22 @@
 import { Elysia } from "elysia";
-import { auth } from "./lib/auth";
-import { cors } from "@elysiajs/cors";
-
-const betterAuth = new Elysia({ name: "better-auth" }).mount(auth.handler).macro({
-  auth: {
-    async resolve({ status, request: { headers } }) {
-      const session = await auth.api.getSession({
-        headers,
-      });
-
-      if (!session) return status(401);
-
-      return {
-        user: session.user,
-        session: session.session,
-      };
-    },
-  },
-});
+import openapi from "@elysiajs/openapi";
+import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth";
 
 const app = new Elysia()
   .use(
-    cors({
-      origin: "http://localhost:3001",
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      credentials: true,
-      allowedHeaders: ["Content-Type", "Authorization"],
+    openapi({
+      documentation: {
+        components: await OpenAPI.components,
+        paths: await OpenAPI.getPaths(),
+      },
     }),
   )
-  .use(betterAuth)
-  .get("/user", ({ user }) => user, {
-    auth: true,
-  })
+  .use(betterAuthPlugin)
   .listen(8000);
 
-console.log(`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`);
+console.log(
+  `🦊 Elysia is running at ${app.server?.protocol}://${app.server?.hostname}:${app.server?.port}`,
+);
+console.log(
+  `📖 OpenAPI Documentation is running at ${app.server?.protocol}://${app.server?.hostname}:${app.server?.port}/openapi`,
+);

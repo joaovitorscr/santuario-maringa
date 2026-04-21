@@ -1,7 +1,5 @@
 import { drizzle } from "drizzle-orm/node-postgres";
-import * as authSchema from "./schemas/auth-schema"
-
-const schema = {...authSchema};
+import { schema } from "./schema";
 
 const db = drizzle({
   connection: {
@@ -9,6 +7,7 @@ const db = drizzle({
     ssl: true,
   },
   schema,
+  casing: "snake_case",
 });
 
 export { db };
