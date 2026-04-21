@@ -12,7 +12,7 @@ const app = new Elysia()
     }),
   )
   .use(betterAuthPlugin)
-  .listen(8000);
+  .listen(process.env.port ?? 8000);
 
 console.log(
   `🦊 Elysia is running at ${app.server?.protocol}://${app.server?.hostname}:${app.server?.port}`,
