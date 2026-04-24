@@ -8,13 +8,8 @@ export const auth = betterAuth({
   plugins: [openAPI()],
   database: drizzleAdapter(db, {
     provider: "pg",
-    usePlural: true,
+    usePlural: false,
   }),
-  advanced: {
-    database: {
-      generateId: false,
-    },
-  },
   emailAndPassword: {
     enabled: true,
     autoSignIn: true,
