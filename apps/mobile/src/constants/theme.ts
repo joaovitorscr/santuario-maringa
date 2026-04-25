@@ -9,18 +9,32 @@ import { Platform } from 'react-native';
 
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#2A2B2F',
+    background: '#F5F1EA',
+    backgroundElement: '#EEE9E1',
+    backgroundSelected: '#E7DED2',
+    textSecondary: '#7B746A',
+    accent: '#AA4D2E',
+    accentSoft: '#F2D5C8',
+    border: '#DED5C9',
+    successSoft: '#DCEBC9',
+    successText: '#5B7740',
+    warningSoft: '#F5D4C4',
+    warningText: '#9C4D30',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#F8F3EC',
+    background: '#181513',
+    backgroundElement: '#26211E',
+    backgroundSelected: '#332C27',
+    textSecondary: '#B5AA9E',
+    accent: '#D88358',
+    accentSoft: '#553526',
+    border: '#403731',
+    successSoft: '#31402B',
+    successText: '#C8DEB0',
+    warningSoft: '#4A2E23',
+    warningText: '#F4C0A6',
   },
 } as const;
 
@@ -28,8 +42,7 @@ export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
   ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
+    sans: 'System',
     /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
     /** iOS `UIFontDescriptorSystemDesignRounded` */
@@ -38,7 +51,7 @@ export const Fonts = Platform.select({
     mono: 'ui-monospace',
   },
   default: {
-    sans: 'normal',
+    sans: 'sans-serif',
     serif: 'serif',
     rounded: 'normal',
     mono: 'monospace',

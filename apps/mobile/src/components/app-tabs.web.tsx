@@ -23,10 +23,13 @@ export default function AppTabs() {
       <TabList asChild>
         <CustomTabList>
           <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
+            <TabButton>Início</TabButton>
           </TabTrigger>
-          <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>Explore</TabButton>
+          <TabTrigger name="gatos" href="/gatos" asChild>
+            <TabButton>Gatos</TabButton>
+          </TabTrigger>
+          <TabTrigger name="cadastrar" href="/cadastrar" asChild>
+            <TabButton variant="accent">Cadastrar</TabButton>
           </TabTrigger>
         </CustomTabList>
       </TabList>
@@ -34,13 +37,27 @@ export default function AppTabs() {
   );
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+type TabButtonProps = TabTriggerSlotProps & {
+  variant?: 'default' | 'accent';
+};
+
+export function TabButton({
+  children,
+  isFocused,
+  variant = 'default',
+  ...props
+}: TabButtonProps) {
+  const isAccent = variant === 'accent';
+
   return (
     <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView
-        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
+        type={isAccent ? 'accent' : isFocused ? 'backgroundSelected' : 'backgroundElement'}
+        style={[styles.tabButtonView, isAccent && styles.tabButtonAccent]}>
+        <ThemedText
+          type="small"
+          themeColor={isAccent || isFocused ? 'text' : 'textSecondary'}
+          style={isAccent && styles.tabButtonAccentText}>
           {children}
         </ThemedText>
       </ThemedView>
@@ -56,7 +73,7 @@ export function CustomTabList(props: TabListProps) {
     <View {...props} style={styles.tabListContainer}>
       <ThemedView type="backgroundElement" style={styles.innerContainer}>
         <ThemedText type="smallBold" style={styles.brandText}>
-          Expo Starter
+          Santuário Maringá
         </ThemedText>
 
         {props.children}
@@ -105,6 +122,13 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.one,
     paddingHorizontal: Spacing.three,
     borderRadius: Spacing.three,
+  },
+  tabButtonAccent: {
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  tabButtonAccentText: {
+    color: '#FFF8F1',
   },
   externalPressable: {
     flexDirection: 'row',
