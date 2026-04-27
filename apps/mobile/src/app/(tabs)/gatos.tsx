@@ -1,28 +1,52 @@
-import React, { useState } from 'react';
-import { Pressable, TextInput, View } from 'react-native';
+import { Search01Icon } from "@hugeicons/core-free-icons";
+import React, { useState } from "react";
+import { TextInput, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 
-import { AppText } from '@/components/ui/app-text';
-import { HeaderBlock } from '@/components/ui/layout';
-import { ResidentListItem } from '@/components/ui/resident-list-item';
-import { ScreenScroll } from '@/components/ui/screen';
-import { Surface } from '@/components/ui/surface';
-import { residents } from '@/data/residents';
-import { useTheme } from '@/hooks/use-theme';
+import { AppText } from "@/components/ui/app-text";
+import { AppIcon } from "@/components/ui/icon";
+import { HeaderBlock } from "@/components/ui/layout";
+import { ResidentListItem } from "@/components/ui/resident-list-item";
+import { ScreenScroll } from "@/components/ui/screen";
+import { Surface } from "@/components/ui/surface";
+import { SelectField } from "@/components/ui/form-fields";
+import { fetchResidents, catQueryKeys } from "@/lib/cats";
+import { ApiError } from "@/lib/api";
+import { useTheme } from "@/hooks/use-theme";
 
 const statusOptions = [
-  'Todos os status',
-  'Residente Permanente',
-  'Em Processo de Adoção',
-  'Em Tratamento',
-  'Adotado',
+  "Todos os status",
+  "Disponível",
+  "Indisponível",
+  "Em Processo de Adoção",
+  "Adotado",
 ] as const;
-const genderOptions = ['Ambos', 'Fêmea', 'Macho'] as const;
+const genderOptions = ["Ambos", "Fêmea", "Macho"] as const;
+
+const statusItems = statusOptions.map((status) => ({
+  label: status,
+  value: status,
+}));
+
+const genderItems = genderOptions.map((gender) => ({
+  label: gender,
+  value: gender,
+}));
 
 export default function CatsScreen() {
   const theme = useTheme();
-  const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<(typeof statusOptions)[number]>('Todos os status');
-  const [genderFilter, setGenderFilter] = useState<(typeof genderOptions)[number]>('Ambos');
+  const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] =
+    useState<(typeof statusOptions)[number]>("Todos os status");
+  const [genderFilter, setGenderFilter] = useState<(typeof genderOptions)[number]>("Ambos");
+  const {
+    data: residents = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: catQueryKeys.all,
+    queryFn: fetchResidents,
+  });
 
   const filteredResidents = residents.filter((resident) => {
     const matchesQuery =
@@ -30,21 +54,11 @@ export default function CatsScreen() {
       resident.name.toLowerCase().includes(query.toLowerCase()) ||
       resident.coat.toLowerCase().includes(query.toLowerCase());
 
-    const matchesStatus = statusFilter === 'Todos os status' || resident.status === statusFilter;
-    const matchesGender = genderFilter === 'Ambos' || resident.sex === genderFilter;
+    const matchesStatus = statusFilter === "Todos os status" || resident.status === statusFilter;
+    const matchesGender = genderFilter === "Ambos" || resident.sex === genderFilter;
 
     return matchesQuery && matchesStatus && matchesGender;
   });
-
-  const cycleStatus = () => {
-    const nextIndex = (statusOptions.indexOf(statusFilter) + 1) % statusOptions.length;
-    setStatusFilter(statusOptions[nextIndex]);
-  };
-
-  const cycleGender = () => {
-    const nextIndex = (genderOptions.indexOf(genderFilter) + 1) % genderOptions.length;
-    setGenderFilter(genderOptions[nextIndex]);
-  };
 
   return (
     <ScreenScroll>
@@ -52,9 +66,7 @@ export default function CatsScreen() {
 
       <Surface className="overflow-hidden">
         <View className="flex-row items-center gap-2 border-b border-app-border px-4 py-3.5 dark:border-app-border-dark">
-          <AppText tone="muted" className="text-base">
-            ⌕
-          </AppText>
+          <AppIcon icon={Search01Icon} size={18} color={theme.textSecondary} />
           <TextInput
             placeholder="Buscar por nome..."
             placeholderTextColor={theme.textSecondary}
@@ -64,38 +76,60 @@ export default function CatsScreen() {
           />
         </View>
 
-        <View className="flex-row">
-          <Pressable
-            onPress={cycleStatus}
-            className="min-h-[42px] flex-1 flex-row items-center justify-between border-r border-app-border px-4 dark:border-app-border-dark">
-            <AppText tone="muted">{statusFilter}</AppText>
-            <AppText tone="muted">⌄</AppText>
-          </Pressable>
-
-          <Pressable
-            onPress={cycleGender}
-            className="min-h-[42px] flex-1 flex-row items-center justify-between px-4">
-            <AppText tone="muted">{genderFilter}</AppText>
-            <AppText tone="muted">⌄</AppText>
-          </Pressable>
+        <View className="flex-row gap-3 p-3">
+          <SelectField
+            label="Status"
+            value={statusFilter}
+            onValueChange={(value) => setStatusFilter(value as (typeof statusOptions)[number])}
+            items={statusItems}
+          />
+          <SelectField
+            label="Gênero"
+            value={genderFilter}
+            onValueChange={(value) => setGenderFilter(value as (typeof genderOptions)[number])}
+            items={genderItems}
+          />
         </View>
       </Surface>
 
       <Surface className="overflow-hidden">
-        {filteredResidents.map((resident, index) => (
-          <View
-            key={resident.id}
-            className={index < filteredResidents.length - 1 ? 'border-b border-app-border dark:border-app-border-dark' : ''}>
-            <ResidentListItem
-              id={resident.id}
-              name={resident.name}
-              meta={`${resident.sex} · ${resident.coat}`}
-              detail={`Entrada: ${resident.entryDate}`}
-              status={resident.status}
-              showChevron
-            />
+        {isLoading ? (
+          <View className="px-4 py-6">
+            <AppText tone="muted">Carregando residentes...</AppText>
           </View>
-        ))}
+        ) : error ? (
+          <View className="px-4 py-6">
+            <AppText tone="danger">
+              {error instanceof ApiError
+                ? error.message
+                : "Não foi possível carregar os residentes."}
+            </AppText>
+          </View>
+        ) : filteredResidents.length === 0 ? (
+          <View className="px-4 py-6">
+            <AppText tone="muted">Nenhum residente encontrado.</AppText>
+          </View>
+        ) : (
+          filteredResidents.map((resident, index) => (
+            <View
+              key={resident.id}
+              className={
+                index < filteredResidents.length - 1
+                  ? "border-b border-app-border dark:border-app-border-dark"
+                  : ""
+              }
+            >
+              <ResidentListItem
+                id={resident.id}
+                name={resident.name}
+                meta={`${resident.sex} · ${resident.coat}`}
+                detail={`Entrada: ${resident.entryDate}`}
+                status={resident.status}
+                showChevron
+              />
+            </View>
+          ))
+        )}
       </Surface>
     </ScreenScroll>
   );

@@ -1,6 +1,8 @@
 import { Elysia } from "elysia";
 import openapi from "@elysiajs/openapi";
 import { betterAuthPlugin, OpenAPI } from "./plugins/better-auth";
+import { adoptionCandidatesRoutes } from "./routes/adoption-candidates";
+import { catRoutes } from "./routes/cat";
 
 const app = new Elysia()
   .use(
@@ -12,6 +14,8 @@ const app = new Elysia()
     }),
   )
   .use(betterAuthPlugin)
+  .use(adoptionCandidatesRoutes)
+  .use(catRoutes)
   .listen(process.env.port ?? 8000);
 
 console.log(

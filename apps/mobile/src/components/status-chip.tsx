@@ -11,9 +11,9 @@ type StatusChipProps = {
 
 export function StatusChip({ status }: StatusChipProps) {
   const toneClass =
-    status === 'Residente Permanente'
+    status === 'Disponível'
       ? 'bg-app-accent-soft dark:bg-app-accent-soft-dark text-app-accent dark:text-app-accent-dark'
-      : status === 'Em Tratamento'
+      : status === 'Indisponível'
         ? 'bg-app-warning-soft dark:bg-app-warning-soft-dark text-app-warning-text dark:text-app-warning-text-dark'
         : status === 'Adotado'
           ? 'bg-app-success-soft dark:bg-app-success-soft-dark text-app-success-text dark:text-app-success-text-dark'

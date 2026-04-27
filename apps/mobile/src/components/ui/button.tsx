@@ -1,21 +1,24 @@
+import { type IconSvgElement } from "@hugeicons/react-native";
 import React from "react";
 import { Pressable, View, type PressableProps } from "react-native";
 
 import { AppText } from "@/components/ui/app-text";
+import { AppIcon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 
 type IconButtonProps = PressableProps & {
-  icon: string;
+  icon: IconSvgElement;
   tone?: "default" | "danger";
   className?: string;
 };
 
 export function IconButton({ icon, tone = "default", className, ...props }: IconButtonProps) {
   return (
-    <Pressable className={cn("min-h-7 min-w-7 items-center justify-center", className)} {...props}>
-      <AppText className="text-[24px] leading-6" tone={tone === "danger" ? "danger" : "default"}>
-        {icon}
-      </AppText>
+    <Pressable
+      className={cn("min-h-[56px] min-w-[56px] items-center justify-center", className)}
+      {...props}
+    >
+      <AppIcon icon={icon} size={34} color={tone === "danger" ? "#E11D48" : undefined} />
     </Pressable>
   );
 }

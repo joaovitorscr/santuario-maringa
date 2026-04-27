@@ -1,3 +1,4 @@
+import { ArrowRight01Icon } from '@hugeicons/core-free-icons';
 import { Link } from 'expo-router';
 import React from 'react';
 import { Pressable, View } from 'react-native';
@@ -5,6 +6,7 @@ import { Pressable, View } from 'react-native';
 import { ResidentAvatar } from '@/components/resident-avatar';
 import { StatusChip } from '@/components/status-chip';
 import { AppText } from '@/components/ui/app-text';
+import { AppIcon } from '@/components/ui/icon';
 import { cn } from '@/lib/cn';
 import { ResidentStatus } from '@/data/residents';
 
@@ -43,11 +45,7 @@ export function ResidentListItem({
           </View>
           <View className="items-end gap-1.5">
             <StatusChip status={status} />
-            {showChevron ? (
-              <AppText tone="muted" className="text-xl leading-[22px]">
-                ›
-              </AppText>
-            ) : null}
+            {showChevron ? <AppIcon icon={ArrowRight01Icon} size={28} /> : null}
           </View>
         </View>
       </Pressable>

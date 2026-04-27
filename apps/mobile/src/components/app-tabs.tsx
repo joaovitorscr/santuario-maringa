@@ -1,42 +1,17 @@
-import React from 'react';
-import { Pressable, Text, View } from 'react-native';
-import { Tabs } from 'expo-router';
+import { Add01Icon, CheckListIcon, Home01Icon } from "@hugeicons/core-free-icons";
+import React from "react";
+import { Pressable, Text, View } from "react-native";
+import { Tabs } from "expo-router";
 
-import { useTheme } from '@/hooks/use-theme';
+import { AppIcon } from "@/components/ui/icon";
+import { useTheme } from "@/hooks/use-theme";
 
 function HomeTabIcon({ focused, color }: { focused: boolean; color: string }) {
-  const colors = useTheme();
-
-  return (
-    <View className="h-[18px] w-[18px] flex-row flex-wrap gap-0.5">
-      {[0, 1, 2, 3].map((cell) => (
-        <View
-          key={cell}
-          className="h-2 w-2 rounded-[2px] border-[1.5px]"
-          style={{
-            borderColor: focused ? colors.accent : color,
-            backgroundColor: focused ? colors.accentSoft : 'transparent',
-          }}
-        />
-      ))}
-    </View>
-  );
+  return <AppIcon icon={Home01Icon} size={20} color={focused ? undefined : color} />;
 }
 
 function ListTabIcon({ focused, color }: { focused: boolean; color: string }) {
-  const colors = useTheme();
-
-  return (
-    <View className="w-[18px] justify-center gap-[3px]">
-      {[0, 1, 2].map((line) => (
-        <View
-          key={line}
-          className="h-0.5 rounded-full"
-          style={{ backgroundColor: focused ? colors.accent : color }}
-        />
-      ))}
-    </View>
-  );
+  return <AppIcon icon={CheckListIcon} size={20} color={focused ? undefined : color} />;
 }
 
 export default function AppTabs() {
@@ -51,22 +26,23 @@ export default function AppTabs() {
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarShowLabel: true,
         tabBarStyle: {
-          height: 86,
-          paddingBottom: 16,
-          paddingTop: 10,
+          height: 80,
+          paddingBottom: 20,
+          paddingTop: 14,
           backgroundColor: colors.backgroundElement,
           borderTopColor: colors.border,
         },
         tabBarLabelStyle: {
           fontSize: 12,
-          fontWeight: '700',
+          fontWeight: "700",
           letterSpacing: 0.2,
         },
-      }}>
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Início',
+          title: "Início",
           tabBarIcon: ({ color, focused }) => <HomeTabIcon color={color} focused={focused} />,
         }}
       />
@@ -74,7 +50,7 @@ export default function AppTabs() {
       <Tabs.Screen
         name="gatos"
         options={{
-          title: 'Gatos',
+          title: "Gatos",
           tabBarIcon: ({ color, focused }) => <ListTabIcon color={color} focused={focused} />,
         }}
       />
@@ -82,7 +58,7 @@ export default function AppTabs() {
       <Tabs.Screen
         name="cadastrar"
         options={{
-          title: 'Cadastrar',
+          title: "Cadastrar",
           tabBarIcon: () => null,
           tabBarButton: (props) => (
             <Pressable
@@ -92,13 +68,15 @@ export default function AppTabs() {
               testID={props.testID}
               onPress={props.onPress}
               onLongPress={props.onLongPress}
-              className="mt-[-28px] flex-1 items-center justify-start">
+              className="mt-[-24px] flex-1 items-center justify-start"
+            >
               <View
-                className="h-[62px] w-[62px] items-center justify-center rounded-full shadow-ambient"
-                style={{ backgroundColor: colors.accent }}>
-                <Text className="text-[30px] font-medium leading-[32px] text-[#FFF8F1]">+</Text>
+                className="h-[60px] w-[60px] items-center justify-center rounded-full shadow-ambient"
+                style={{ backgroundColor: colors.accent }}
+              >
+                <AppIcon icon={Add01Icon} size={16} color="#FFF8F1" strokeWidth={2.2} />
               </View>
-              <Text className="mt-1.5 text-xs font-bold" style={{ color: colors.text }}>
+              <Text className="mt-1.5 text-[12px] font-bold" style={{ color: colors.text }}>
                 Cadastrar
               </Text>
             </Pressable>

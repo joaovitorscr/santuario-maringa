@@ -1,18 +1,37 @@
+import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
 import React, { useState } from 'react';
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
+import { router } from 'expo-router';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { PrimaryButton } from '@/components/ui/button';
 import { SelectField, TextField, ToggleField } from '@/components/ui/form-fields';
-import { AppText } from '@/components/ui/app-text';
+import { AppIcon } from '@/components/ui/icon';
 import { HeaderBlock, SectionLabel } from '@/components/ui/layout';
 import { ScreenScroll } from '@/components/ui/screen';
 import { Surface } from '@/components/ui/surface';
+import { ApiError } from '@/lib/api';
+import { catQueryKeys, createCat } from '@/lib/cats';
+
+const genderOptions = [
+  { label: 'Selecione', value: 'Selecione' },
+  { label: 'Fêmea', value: 'Fêmea' },
+  { label: 'Macho', value: 'Macho' },
+] as const;
+
+const statusOptions = [
+  { label: 'Selecione', value: 'Selecione' },
+  { label: 'Disponível', value: 'Disponível' },
+  { label: 'Indisponível', value: 'Indisponível' },
+  { label: 'Em Processo de Adoção', value: 'Em Processo de Adoção' },
+  { label: 'Adotado', value: 'Adotado' },
+] as const;
 
 export default function RegisterScreen() {
   const [name, setName] = useState('');
   const [gender, setGender] = useState<'Selecione' | 'Fêmea' | 'Macho'>('Selecione');
   const [status, setStatus] = useState<
-    'Selecione' | 'Residente Permanente' | 'Em Processo de Adoção' | 'Em Tratamento'
+    'Selecione' | 'Disponível' | 'Indisponível' | 'Em Processo de Adoção' | 'Adotado'
   >('Selecione');
   const [coat, setCoat] = useState('');
   const [breed, setBreed] = useState('');
@@ -23,27 +42,58 @@ export default function RegisterScreen() {
   const [neutered, setNeutered] = useState(false);
   const [vaccinated, setVaccinated] = useState(false);
   const [notes, setNotes] = useState('');
+  const queryClient = useQueryClient();
+  const createCatMutation = useMutation({
+    mutationFn: createCat,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: catQueryKeys.all });
+      Alert.alert('Residente cadastrado', 'O residente foi salvo com sucesso.');
+      router.replace('/gatos');
+    },
+    onError: (error) => {
+      const message =
+        error instanceof ApiError || error instanceof Error ? error.message : 'Tente novamente.';
 
-  const cycleGender = () => {
-    setGender((current) =>
-      current === 'Selecione' ? 'Fêmea' : current === 'Fêmea' ? 'Macho' : 'Selecione',
-    );
-  };
+      Alert.alert('Falha ao cadastrar', message);
+    },
+  });
 
-  const cycleStatus = () => {
-    setStatus((current) => {
-      if (current === 'Selecione') return 'Residente Permanente';
-      if (current === 'Residente Permanente') return 'Em Processo de Adoção';
-      if (current === 'Em Processo de Adoção') return 'Em Tratamento';
-      return 'Selecione';
+  const handleSubmit = () => {
+    if (!name.trim()) {
+      Alert.alert('Nome obrigatório', 'Informe o nome do residente.');
+      return;
+    }
+
+    if (gender === 'Selecione') {
+      Alert.alert('Gênero obrigatório', 'Selecione o gênero do residente.');
+      return;
+    }
+
+    if (status === 'Selecione') {
+      Alert.alert('Status obrigatório', 'Selecione o status do residente.');
+      return;
+    }
+
+    createCatMutation.mutate({
+      name,
+      gender,
+      status,
+      coat,
+      breed,
+      weight,
+      entryDate,
+      birthDate,
+      neutered,
+      vaccinated,
+      notes,
     });
   };
 
   return (
     <ScreenScroll contentClassName="gap-3 pb-28 pt-6">
       <View className="flex-row items-start gap-2">
-        <View className="w-7 items-center pt-1">
-          <AppText className="text-[28px] leading-7">‹</AppText>
+        <View className="w-10 items-center pt-1">
+          <AppIcon icon={ArrowLeft01Icon} size={30} />
         </View>
         <HeaderBlock
           className="flex-1"
@@ -56,8 +106,18 @@ export default function RegisterScreen() {
         <SectionLabel>Informações Básicas</SectionLabel>
         <TextField label="Nome" placeholder="Nome do gato" value={name} onChangeText={setName} />
         <View className="flex-row gap-4">
-          <SelectField label="Gênero" value={gender} onPress={cycleGender} />
-          <SelectField label="Status" value={status} onPress={cycleStatus} />
+          <SelectField
+            label="Gênero"
+            value={gender}
+            onValueChange={(value) => setGender(value as typeof gender)}
+            items={[...genderOptions]}
+          />
+          <SelectField
+            label="Status"
+            value={status}
+            onValueChange={(value) => setStatus(value as typeof status)}
+            items={[...statusOptions]}
+          />
         </View>
         <TextField
           label="Cor / Pelagem"
@@ -124,7 +184,11 @@ export default function RegisterScreen() {
         />
       </Surface>
 
-      <PrimaryButton label="Cadastrar Residente" onPress={() => undefined} />
+      <PrimaryButton
+        label={createCatMutation.isPending ? 'Cadastrando...' : 'Cadastrar Residente'}
+        onPress={handleSubmit}
+        disabled={createCatMutation.isPending}
+      />
     </ScreenScroll>
   );
 }

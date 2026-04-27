@@ -1,7 +1,10 @@
+import { ArrowDown01Icon } from '@hugeicons/core-free-icons';
 import React, { useState } from 'react';
 import { Pressable, Switch, TextInput, View, type TextInputProps } from 'react-native';
+import { Dropdown } from 'react-native-element-dropdown';
 
 import { AppText } from '@/components/ui/app-text';
+import { AppIcon } from '@/components/ui/icon';
 import { cn } from '@/lib/cn';
 import { useTheme } from '@/hooks/use-theme';
 
@@ -90,21 +93,70 @@ export function TextField({
   );
 }
 
-type SelectFieldProps = FieldProps & {
+type SelectFieldOption = {
+  label: string;
   value: string;
-  onPress: () => void;
 };
 
-export function SelectField({ label, value, onPress, className }: SelectFieldProps) {
+type SelectFieldProps = FieldProps & {
+  value: string;
+  onValueChange: (value: string) => void;
+  items: SelectFieldOption[];
+};
+
+export function SelectField({
+  label,
+  value,
+  onValueChange,
+  items,
+  className,
+}: SelectFieldProps) {
+  const theme = useTheme();
+
   return (
     <View className={cn('flex-1 gap-2', className)}>
-      <FieldLabel label={label} />
-      <Pressable
-        onPress={onPress}
-        className="min-h-12 flex-row items-center justify-between rounded-xl border border-app-border bg-app-background px-3 dark:border-app-border-dark dark:bg-app-background-dark">
-        <AppText tone={value.startsWith('Selecione') ? 'muted' : 'default'}>{value}</AppText>
-        <AppText tone="muted">⌄</AppText>
-      </Pressable>
+      {label ? <FieldLabel label={label} /> : null}
+      <Dropdown
+        mode="modal"
+        data={items}
+        value={value}
+        labelField="label"
+        valueField="value"
+        placeholder={label || 'Selecione'}
+        onChange={(item) => onValueChange(item.value)}
+        style={{
+          minHeight: 48,
+          borderRadius: 12,
+          borderWidth: 1,
+          borderColor: theme.border,
+          backgroundColor: theme.background,
+          paddingHorizontal: 12,
+        }}
+        containerStyle={{
+          borderRadius: 16,
+          borderWidth: 1,
+          borderColor: theme.border,
+          backgroundColor: theme.backgroundElement,
+        }}
+        placeholderStyle={{
+          color: value.startsWith('Selecione') ? theme.textSecondary : theme.text,
+          fontSize: 16,
+          fontWeight: '500',
+        }}
+        selectedTextStyle={{
+          color: value.startsWith('Selecione') ? theme.textSecondary : theme.text,
+          fontSize: 16,
+          fontWeight: '500',
+        }}
+        itemTextStyle={{
+          color: theme.text,
+          fontSize: 16,
+          fontWeight: '500',
+        }}
+        activeColor={theme.accentSoft}
+        iconColor={theme.textSecondary}
+        renderRightIcon={() => <AppIcon icon={ArrowDown01Icon} size={22} color={theme.textSecondary} />}
+      />
     </View>
   );
 }

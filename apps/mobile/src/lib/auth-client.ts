@@ -1,3 +1,4 @@
+import { apiBaseUrl } from "@/lib/api";
 import { createAuthClient } from "better-auth/react";
 import { expoClient } from "@better-auth/expo/client";
 import { usernameClient } from "better-auth/client/plugins";
@@ -5,7 +6,7 @@ import * as SecureStore from "expo-secure-store";
 
 export const authClient = createAuthClient({
   basePath: "/auth",
-  baseURL: "http://localhost:8000",
+  baseURL: apiBaseUrl,
   plugins: [
     expoClient({
       scheme: "santuario-maringa",

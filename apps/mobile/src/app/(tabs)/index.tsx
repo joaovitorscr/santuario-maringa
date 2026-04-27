@@ -1,45 +1,65 @@
-import { router } from 'expo-router';
-import React from 'react';
-import { Pressable, View } from 'react-native';
+import {
+  ArrowRight01Icon,
+  CheckListIcon,
+  FavouriteIcon,
+  ShieldBanIcon,
+  VaccineIcon,
+} from "@hugeicons/core-free-icons";
+import { router } from "expo-router";
+import React from "react";
+import { Pressable, View } from "react-native";
+import { useQuery } from "@tanstack/react-query";
 
-import { AppText } from '@/components/ui/app-text';
-import { HeaderBlock } from '@/components/ui/layout';
-import { ResidentListItem } from '@/components/ui/resident-list-item';
-import { ScreenScroll } from '@/components/ui/screen';
-import { Surface } from '@/components/ui/surface';
-import { residents } from '@/data/residents';
-
-const latestResidents = residents.slice(0, 5);
+import { AppText } from "@/components/ui/app-text";
+import { AppIcon } from "@/components/ui/icon";
+import { HeaderBlock } from "@/components/ui/layout";
+import { ResidentListItem } from "@/components/ui/resident-list-item";
+import { ScreenScroll } from "@/components/ui/screen";
+import { Surface } from "@/components/ui/surface";
+import { ApiError } from "@/lib/api";
+import { catQueryKeys, fetchResidents } from "@/lib/cats";
 
 export default function HomeScreen() {
+  const {
+    data: residents = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: catQueryKeys.all,
+    queryFn: fetchResidents,
+  });
+  const latestResidents = residents.slice(0, 5);
   const neuteredCount = residents.filter((resident) => resident.neutered).length;
   const vaccinatedCount = residents.filter((resident) => resident.vaccinated).length;
-  const treatmentCount = residents.filter((resident) => resident.status === 'Em Tratamento').length;
+  const unavailableCount = residents.filter(
+    (resident) => resident.status === "Indisponível",
+  ).length;
+  const residentCount = residents.length || 1;
 
   const stats = [
     {
-      label: 'Residentes',
+      label: "Residentes",
       value: String(residents.length),
-      helper: '0 nos últimos 30 dias',
-      icon: '◌',
+      helper: "0 nos últimos 30 dias",
+      icon: CheckListIcon,
     },
     {
-      label: 'Castrados',
-      value: `${Math.round((neuteredCount / residents.length) * 100)}%`,
+      label: "Castrados",
+      value: `${Math.round((neuteredCount / residentCount) * 100)}%`,
       helper: `${neuteredCount} de ${residents.length}`,
-      icon: '♡',
+      icon: FavouriteIcon,
     },
     {
-      label: 'Vacinados',
-      value: `${Math.round((vaccinatedCount / residents.length) * 100)}%`,
+      label: "Vacinados",
+      value: `${Math.round((vaccinatedCount / residentCount) * 100)}%`,
       helper: `${vaccinatedCount} de ${residents.length}`,
-      icon: '⌁',
+      icon: VaccineIcon,
     },
     {
-      label: 'Tratamento',
-      value: String(treatmentCount),
-      helper: 'Atenção médica',
-      icon: '⌇',
+      label: "Indisponíveis",
+      value: String(unavailableCount),
+      helper: "Fora de adoção",
+      icon: ShieldBanIcon,
     },
   ];
 
@@ -51,12 +71,11 @@ export default function HomeScreen() {
         {stats.map((stat) => (
           <Surface
             key={stat.label}
-            className="min-h-[118px] w-[47.5%] justify-between rounded-[14px] p-4">
+            className="min-h-[118px] w-[47.5%] justify-between rounded-[14px] p-4"
+          >
             <View className="flex-row items-center justify-between">
               <AppText variant="label">{stat.label}</AppText>
-              <AppText tone="muted" className="text-base">
-                {stat.icon}
-              </AppText>
+              <AppIcon icon={stat.icon} size={18} color="#7D7884" />
             </View>
             <AppText className="text-[28px] font-extrabold leading-8">{stat.value}</AppText>
             <AppText tone="muted">{stat.helper}</AppText>
@@ -66,25 +85,49 @@ export default function HomeScreen() {
 
       <View className="flex-row items-center justify-between">
         <AppText className="text-[18px] font-semibold leading-6">Últimas Chegadas</AppText>
-        <Pressable onPress={() => router.push('/gatos')}>
-          <AppText variant="link">Ver todos ›</AppText>
+        <Pressable onPress={() => router.push("/gatos")} className="flex-row items-center gap-1.5">
+          <AppText variant="link" className="text-[22px] leading-7">
+            Ver todos
+          </AppText>
+          <AppIcon icon={ArrowRight01Icon} size={22} />
         </Pressable>
       </View>
 
       <Surface className="overflow-hidden">
-        {latestResidents.map((resident, index) => (
-          <View
-            key={resident.id}
-            className={index < latestResidents.length - 1 ? 'border-b border-app-border dark:border-app-border-dark' : ''}>
-            <ResidentListItem
-              id={resident.id}
-              name={resident.name}
-              meta={`${resident.sex} · ${resident.entryDate}`}
-              status={resident.status}
-              compact
-            />
+        {isLoading ? (
+          <View className="px-4 py-6">
+            <AppText tone="muted">Carregando residentes...</AppText>
           </View>
-        ))}
+        ) : error ? (
+          <View className="px-4 py-6">
+            <AppText tone="danger">
+              {error instanceof ApiError ? error.message : "Não foi possível carregar o resumo."}
+            </AppText>
+          </View>
+        ) : latestResidents.length === 0 ? (
+          <View className="px-4 py-6">
+            <AppText tone="muted">Nenhum residente cadastrado ainda.</AppText>
+          </View>
+        ) : (
+          latestResidents.map((resident, index) => (
+            <View
+              key={resident.id}
+              className={
+                index < latestResidents.length - 1
+                  ? "border-b border-app-border dark:border-app-border-dark"
+                  : ""
+              }
+            >
+              <ResidentListItem
+                id={resident.id}
+                name={resident.name}
+                meta={`${resident.sex} · ${resident.entryDate}`}
+                status={resident.status}
+                compact
+              />
+            </View>
+          ))
+        )}
       </Surface>
     </ScreenScroll>
   );
