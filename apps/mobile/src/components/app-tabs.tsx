@@ -1,9 +1,43 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 
-import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
+
+function HomeTabIcon({ focused, color }: { focused: boolean; color: string }) {
+  const colors = useTheme();
+
+  return (
+    <View className="h-[18px] w-[18px] flex-row flex-wrap gap-0.5">
+      {[0, 1, 2, 3].map((cell) => (
+        <View
+          key={cell}
+          className="h-2 w-2 rounded-[2px] border-[1.5px]"
+          style={{
+            borderColor: focused ? colors.accent : color,
+            backgroundColor: focused ? colors.accentSoft : 'transparent',
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+function ListTabIcon({ focused, color }: { focused: boolean; color: string }) {
+  const colors = useTheme();
+
+  return (
+    <View className="w-[18px] justify-center gap-[3px]">
+      {[0, 1, 2].map((line) => (
+        <View
+          key={line}
+          className="h-0.5 rounded-full"
+          style={{ backgroundColor: focused ? colors.accent : color }}
+        />
+      ))}
+    </View>
+  );
+}
 
 export default function AppTabs() {
   const colors = useTheme();
@@ -33,20 +67,7 @@ export default function AppTabs() {
         name="index"
         options={{
           title: 'Início',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={styles.gridIcon}>
-              {[0, 1, 2, 3].map((cell) => (
-                <View
-                  key={cell}
-                  style={[
-                    styles.gridCell,
-                    { borderColor: color },
-                    focused && { backgroundColor: colors.accentSoft, borderColor: colors.accent },
-                  ]}
-                />
-              ))}
-            </View>
-          ),
+          tabBarIcon: ({ color, focused }) => <HomeTabIcon color={color} focused={focused} />,
         }}
       />
 
@@ -54,20 +75,7 @@ export default function AppTabs() {
         name="gatos"
         options={{
           title: 'Gatos',
-          tabBarIcon: ({ color, focused }) => (
-            <View style={styles.listIcon}>
-              {[0, 1, 2].map((line) => (
-                <View
-                  key={line}
-                  style={[
-                    styles.listLine,
-                    { backgroundColor: color },
-                    focused && { backgroundColor: colors.accent },
-                  ]}
-                />
-              ))}
-            </View>
-          ),
+          tabBarIcon: ({ color, focused }) => <ListTabIcon color={color} focused={focused} />,
         }}
       />
 
@@ -84,14 +92,15 @@ export default function AppTabs() {
               testID={props.testID}
               onPress={props.onPress}
               onLongPress={props.onLongPress}
-              style={({ pressed }) => [
-                styles.actionButtonWrap,
-                pressed && styles.actionButtonWrapPressed,
-              ]}>
-              <View style={[styles.actionButtonCore, { backgroundColor: colors.accent }]}>
-                <Text style={styles.actionButtonPlus}>+</Text>
+              className="mt-[-28px] flex-1 items-center justify-start">
+              <View
+                className="h-[62px] w-[62px] items-center justify-center rounded-full shadow-ambient"
+                style={{ backgroundColor: colors.accent }}>
+                <Text className="text-[30px] font-medium leading-[32px] text-[#FFF8F1]">+</Text>
               </View>
-              <Text style={[styles.actionButtonLabel, { color: colors.text }]}>Cadastrar</Text>
+              <Text className="mt-1.5 text-xs font-bold" style={{ color: colors.text }}>
+                Cadastrar
+              </Text>
             </Pressable>
           ),
         }}
@@ -99,60 +108,3 @@ export default function AppTabs() {
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  gridIcon: {
-    width: 18,
-    height: 18,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 2,
-  },
-  gridCell: {
-    width: 8,
-    height: 8,
-    borderRadius: 2,
-    borderWidth: 1.5,
-  },
-  listIcon: {
-    width: 18,
-    gap: 3,
-    justifyContent: 'center',
-  },
-  listLine: {
-    height: 2,
-    borderRadius: 999,
-  },
-  actionButtonWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    marginTop: -28,
-  },
-  actionButtonWrapPressed: {
-    opacity: 0.92,
-  },
-  actionButtonCore: {
-    width: 62,
-    height: 62,
-    borderRadius: 31,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOpacity: 0.16,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 10,
-  },
-  actionButtonPlus: {
-    fontSize: 30,
-    lineHeight: 32,
-    color: '#FFF8F1',
-    fontWeight: '500',
-  },
-  actionButtonLabel: {
-    marginTop: Spacing.one + 2,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-});

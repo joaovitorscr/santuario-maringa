@@ -1,44 +1,29 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
+import { AppText } from '@/components/ui/app-text';
 import { ResidentStatus } from '@/data/residents';
-import { useTheme } from '@/hooks/use-theme';
+import { cn } from '@/lib/cn';
 
 type StatusChipProps = {
   status: ResidentStatus;
 };
 
 export function StatusChip({ status }: StatusChipProps) {
-  const theme = useTheme();
-
-  const palette =
+  const toneClass =
     status === 'Residente Permanente'
-      ? { backgroundColor: theme.accentSoft, color: theme.accent }
+      ? 'bg-app-accent-soft dark:bg-app-accent-soft-dark text-app-accent dark:text-app-accent-dark'
       : status === 'Em Tratamento'
-        ? { backgroundColor: theme.warningSoft, color: theme.warningText }
+        ? 'bg-app-warning-soft dark:bg-app-warning-soft-dark text-app-warning-text dark:text-app-warning-text-dark'
         : status === 'Adotado'
-          ? { backgroundColor: theme.successSoft, color: theme.successText }
-          : { backgroundColor: theme.accentSoft, color: theme.accent };
+          ? 'bg-app-success-soft dark:bg-app-success-soft-dark text-app-success-text dark:text-app-success-text-dark'
+          : 'bg-app-accent-soft dark:bg-app-accent-soft-dark text-app-accent dark:text-app-accent-dark';
 
   return (
-    <View style={[styles.chip, { backgroundColor: palette.backgroundColor }]}>
-      <ThemedText type="smallBold" style={[styles.text, { color: palette.color }]}>
+    <View className={cn('self-start rounded-lg px-2.5 py-[5px]', toneClass)}>
+      <AppText variant="smallBold" className="text-[11px] leading-[14px]">
         {status}
-      </ThemedText>
+      </AppText>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  chip: {
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    alignSelf: 'flex-start',
-  },
-  text: {
-    fontSize: 11,
-    lineHeight: 14,
-  },
-});

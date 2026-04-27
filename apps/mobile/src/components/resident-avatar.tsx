@@ -1,42 +1,30 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
-import { ThemedText } from '@/components/themed-text';
-import { useTheme } from '@/hooks/use-theme';
+import { AppText } from '@/components/ui/app-text';
+import { cn } from '@/lib/cn';
 
 type ResidentAvatarProps = {
   name: string;
-  size?: number;
+  size?: 'default' | 'hero';
 };
 
-export function ResidentAvatar({ name, size = 52 }: ResidentAvatarProps) {
-  const theme = useTheme();
+export function ResidentAvatar({ name, size = 'default' }: ResidentAvatarProps) {
   const initial = name.trim().charAt(0).toUpperCase();
 
   return (
     <View
-      style={[
-        styles.avatar,
-        {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          backgroundColor: theme.accentSoft,
-        },
-      ]}>
-      <ThemedText style={[styles.letter, { color: theme.accent, fontSize: size * 0.34 }]}>
+      className={cn(
+        'items-center justify-center rounded-full bg-app-accent-soft dark:bg-app-accent-soft-dark',
+        size === 'hero' ? 'h-[116px] w-[116px]' : 'h-[52px] w-[52px]',
+      )}>
+      <AppText
+        className={cn(
+          'font-extrabold text-app-accent dark:text-app-accent-dark',
+          size === 'hero' ? 'text-[40px] leading-[44px]' : 'text-lg leading-6',
+        )}>
         {initial}
-      </ThemedText>
+      </AppText>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  avatar: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  letter: {
-    fontWeight: '800',
-  },
-});

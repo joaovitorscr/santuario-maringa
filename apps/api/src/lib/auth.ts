@@ -1,11 +1,22 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { openAPI } from "better-auth/plugins";
+import { openAPI, username } from "better-auth/plugins";
 import { db } from "@/db";
 
 export const auth = betterAuth({
   basePath: "/auth",
-  plugins: [openAPI()],
+  plugins: [openAPI(), username()],
+  trustedOrigins: [
+    "santuario-maringa://",
+    ...(process.env.NODE_ENV === "development"
+      ? [
+          "http://localhost:8000",
+          "exp://", // Trust all Expo URLs (prefix matching)
+          "exp://**", // Trust all Expo URLs (wildcard matching)
+          "exp://192.168.*.*:*/**", // Trust 192.168.x.x IP range with any port and path
+        ]
+      : []),
+  ],
   database: drizzleAdapter(db, {
     provider: "pg",
     usePlural: false,

@@ -1,35 +1,28 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View } from 'react-native';
 
 import { ResidentAvatar } from '@/components/resident-avatar';
 import { StatusChip } from '@/components/status-chip';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
+import { HealthBadge, IconButton } from '@/components/ui/button';
+import { AppText } from '@/components/ui/app-text';
+import { SectionLabel } from '@/components/ui/layout';
+import { ScreenScroll } from '@/components/ui/screen';
+import { Surface } from '@/components/ui/surface';
 import { getResidentById } from '@/data/residents';
-import { useTheme } from '@/hooks/use-theme';
 
 export default function ResidentDetailScreen() {
-  const theme = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
   const resident = getResidentById(id ?? '');
 
   if (!resident) {
     return (
-      <ThemedView style={styles.screen}>
-        <SafeAreaView style={styles.safeArea}>
-          <View style={styles.missingState}>
-            <ThemedText type="subtitle" style={styles.heading}>
-              Residente não encontrado
-            </ThemedText>
-            <Pressable onPress={() => router.back()} style={({ pressed }) => pressed && styles.pressed}>
-              <ThemedText style={{ color: theme.accent }}>Voltar</ThemedText>
-            </Pressable>
-          </View>
-        </SafeAreaView>
-      </ThemedView>
+      <ScreenScroll contentClassName="flex-1 items-center justify-center gap-2">
+        <AppText variant="subtitle">Residente não encontrado</AppText>
+        <AppText variant="link" onPress={() => router.back()}>
+          Voltar
+        </AppText>
+      </ScreenScroll>
     );
   }
 
@@ -41,198 +34,59 @@ export default function ResidentDetailScreen() {
   ];
 
   return (
-    <ThemedView style={styles.screen}>
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          contentContainerStyle={[styles.content, { paddingBottom: BottomTabInset + Spacing.five }]}
-          showsVerticalScrollIndicator={false}>
-          <View style={styles.topBar}>
-            <Pressable onPress={() => router.back()} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
-              <ThemedText style={styles.topBarIcon}>‹</ThemedText>
-            </Pressable>
+    <ScreenScroll contentClassName="gap-3 pb-28 pt-6">
+      <View className="flex-row items-center justify-between">
+        <IconButton icon="‹" onPress={() => router.back()} className="min-h-8 min-w-8" />
 
-            <View style={styles.topBarActions}>
-              <Pressable style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
-                <ThemedText themeColor="textSecondary">✎</ThemedText>
-              </Pressable>
-              <Pressable style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
-                <ThemedText style={{ color: '#F05A4F' }}>⌫</ThemedText>
-              </Pressable>
-            </View>
+        <View className="flex-row items-center gap-1">
+          <IconButton icon="✎" />
+          <IconButton icon="⌫" tone="danger" />
+        </View>
+      </View>
+
+      <Surface tone="accentSoft" className="min-h-[356px] items-center justify-between gap-4 p-4">
+        <ResidentAvatar name={resident.name} size="hero" />
+        <View className="w-full flex-row items-end justify-between gap-2">
+          <View className="flex-1 gap-0.5">
+            <AppText variant="subtitle">{resident.name}</AppText>
+            <AppText tone="muted">
+              {resident.sex} · {resident.coat}
+            </AppText>
           </View>
+          <StatusChip status={resident.status} />
+        </View>
+      </Surface>
 
-          <ThemedView type="backgroundElement" style={[styles.heroCard, { backgroundColor: theme.accentSoft }]}>
-            <ResidentAvatar name={resident.name} size={116} />
-            <View style={styles.heroMeta}>
-              <View style={styles.heroText}>
-                <ThemedText type="subtitle" style={styles.heroName}>
-                  {resident.name}
-                </ThemedText>
-                <ThemedText themeColor="textSecondary">
-                  {resident.sex} · {resident.coat}
-                </ThemedText>
-              </View>
-              <StatusChip status={resident.status} />
-            </View>
-          </ThemedView>
+      <Surface className="gap-2 p-4">
+        <SectionLabel className="mb-1">Informações</SectionLabel>
+        {infoRows.map(([label, value], index) => (
+          <View
+            key={label}
+            className={`min-h-[50px] flex-row items-center justify-between ${
+              index < infoRows.length - 1 ? 'border-b border-app-border dark:border-app-border-dark' : ''
+            }`}>
+            <AppText tone="muted">{label}</AppText>
+            <AppText className="max-w-[55%] text-right font-bold">{value}</AppText>
+          </View>
+        ))}
+      </Surface>
 
-          <ThemedView type="backgroundElement" style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
-              Informações
-            </ThemedText>
-            {infoRows.map(([label, value], index) => (
-              <View
-                key={label}
-                style={[
-                  styles.infoRow,
-                  index < infoRows.length - 1 && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: theme.border,
-                  },
-                ]}>
-                <ThemedText themeColor="textSecondary">{label}</ThemedText>
-                <ThemedText style={styles.infoValue}>{value}</ThemedText>
-              </View>
-            ))}
-          </ThemedView>
+      <Surface className="gap-2 p-4">
+        <SectionLabel className="mb-1">Saúde</SectionLabel>
+        <View className="min-h-11 flex-row items-center justify-between">
+          <AppText tone="muted">♡ Castrado(a)</AppText>
+          <HealthBadge active={resident.neutered} label={resident.neutered ? 'Sim' : 'Não'} />
+        </View>
+        <View className="min-h-11 flex-row items-center justify-between">
+          <AppText tone="muted">⌁ Vacinado(a)</AppText>
+          <HealthBadge active={resident.vaccinated} label={resident.vaccinated ? 'Sim' : 'Não'} />
+        </View>
+      </Surface>
 
-          <ThemedView type="backgroundElement" style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
-              Saúde
-            </ThemedText>
-            <View style={styles.healthRow}>
-              <ThemedText themeColor="textSecondary">♡ Castrado(a)</ThemedText>
-              <View style={[styles.healthBadge, { backgroundColor: resident.neutered ? theme.successSoft : theme.border }]}>
-                <ThemedText style={{ color: resident.neutered ? theme.successText : theme.textSecondary }}>
-                  {resident.neutered ? 'Sim' : 'Não'}
-                </ThemedText>
-              </View>
-            </View>
-            <View style={styles.healthRow}>
-              <ThemedText themeColor="textSecondary">⌁ Vacinado(a)</ThemedText>
-              <View style={[styles.healthBadge, { backgroundColor: resident.vaccinated ? theme.successSoft : theme.border }]}>
-                <ThemedText style={{ color: resident.vaccinated ? theme.successText : theme.textSecondary }}>
-                  {resident.vaccinated ? 'Sim' : 'Não'}
-                </ThemedText>
-              </View>
-            </View>
-          </ThemedView>
-
-          <ThemedView type="backgroundElement" style={styles.section}>
-            <ThemedText type="smallBold" themeColor="textSecondary" style={styles.sectionLabel}>
-              Observações
-            </ThemedText>
-            <ThemedText themeColor="textSecondary">{resident.notes}</ThemedText>
-          </ThemedView>
-        </ScrollView>
-      </SafeAreaView>
-    </ThemedView>
+      <Surface className="gap-2 p-4">
+        <SectionLabel className="mb-1">Observações</SectionLabel>
+        <AppText tone="muted">{resident.notes}</AppText>
+      </Surface>
+    </ScreenScroll>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    paddingHorizontal: Spacing.three,
-  },
-  content: {
-    paddingTop: Spacing.four,
-    gap: Spacing.three,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  topBarActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.one,
-  },
-  iconButton: {
-    minWidth: 28,
-    minHeight: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  topBarIcon: {
-    fontSize: 30,
-    lineHeight: 28,
-  },
-  heroCard: {
-    borderRadius: 16,
-    padding: Spacing.three,
-    gap: Spacing.three,
-    minHeight: 356,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  heroMeta: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    gap: Spacing.two,
-  },
-  heroText: {
-    flex: 1,
-    gap: 2,
-  },
-  heroName: {
-    fontSize: 28,
-    lineHeight: 32,
-  },
-  section: {
-    borderRadius: 16,
-    padding: Spacing.three,
-    gap: Spacing.two,
-  },
-  sectionLabel: {
-    textTransform: 'uppercase',
-    letterSpacing: 0.7,
-    marginBottom: 4,
-  },
-  infoRow: {
-    minHeight: 50,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  infoValue: {
-    fontWeight: '700',
-    textAlign: 'right',
-    maxWidth: '55%',
-  },
-  healthRow: {
-    minHeight: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  healthBadge: {
-    minWidth: 46,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignItems: 'center',
-  },
-  missingState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.two,
-  },
-  heading: {
-    fontSize: 28,
-    lineHeight: 34,
-  },
-  pressed: {
-    opacity: 0.82,
-  },
-});
