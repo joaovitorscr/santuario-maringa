@@ -7,12 +7,16 @@
   ],
   "scripts": {
     "dev": "turbo run dev",
-    "start": "turbo run start",
+    "dev:api": "turbo run dev --filter=@santuario-maringa/api",
+    "dev:mobile:ios": "turbo run ios --filter=@santuario-maringa/mobile",
+    "dev:mobile:android": "turbo run android --filter=@santuario-maringa/mobile",
     "build": "turbo run build",
-    "typecheck": "turbo run typecheck",
+    "build:api": "turbo run build --filter=@santuario-maringa/api",
+    "build:mobile": "turbo run build --filter=@santuario-maringa/mobile",
     "lint": "oxlint --report-unused-disable-directives",
     "fmt": "oxfmt",
-    "fmt:check": "oxfmt --check"
+    "fmt:check": "oxfmt --check",
+    "typecheck": "turbo run typecheck"
   },
   "devDependencies": {
     "oxfmt": "0.45.0",
