@@ -1,10 +1,13 @@
+import "@/env";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { openAPI, username } from "better-auth/plugins";
 import { db } from "@/db";
 
+export const AUTH_BASE_PATH = "/auth";
+
 export const auth = betterAuth({
-  basePath: "/auth",
+  basePath: AUTH_BASE_PATH,
   plugins: [openAPI(), username()],
   trustedOrigins: [
     "santuario-maringa://",

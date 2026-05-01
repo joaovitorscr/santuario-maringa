@@ -6,10 +6,10 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "turbo run dev",
-    "dev:api": "turbo run dev --filter=@santuario-maringa/api",
-    "dev:mobile:ios": "turbo run ios --filter=@santuario-maringa/mobile",
-    "dev:mobile:android": "turbo run android --filter=@santuario-maringa/mobile",
+    "dev": "turbo run dev --summarize",
+    "dev:api": "turbo run dev --filter=@santuario-maringa/api --summarize",
+    "dev:mobile:ios": "turbo run ios --filter=@santuario-maringa/mobile --summarize",
+    "dev:mobile:android": "turbo run android --filter=@santuario-maringa/mobile --summarize",
     "build": "turbo run build",
     "build:api": "turbo run build --filter=@santuario-maringa/api",
     "build:mobile": "turbo run build --filter=@santuario-maringa/mobile",
