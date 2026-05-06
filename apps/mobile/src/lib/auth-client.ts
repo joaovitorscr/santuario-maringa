@@ -1,4 +1,4 @@
-import { apiBaseUrl } from "@/lib/api";
+import { apiBaseUrl } from "@/lib/api-config";
 import { createAuthClient } from "better-auth/react";
 import { expoClient } from "@better-auth/expo/client";
 import { usernameClient } from "better-auth/client/plugins";

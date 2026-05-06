@@ -8,14 +8,19 @@ import { ScreenScroll } from "@/components/ui/screen";
 import { Surface } from "@/components/ui/surface";
 import { authClient } from "@/lib/auth-client";
 
-export default function SignIn() {
+export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    await authClient.signIn.username({
+    const { data, error } = await authClient.signIn.username({
       username,
       password,
+    });
+
+    console.log("After Login Request:", {
+      data,
+      error,
     });
   };
 

@@ -85,7 +85,10 @@ export default function HomeScreen() {
 
       <View className="flex-row items-center justify-between">
         <AppText className="text-[18px] font-semibold leading-6">Últimas Chegadas</AppText>
-        <Pressable onPress={() => router.push("/gatos")} className="flex-row items-center gap-1.5">
+        <Pressable
+          onPress={() => router.push("/private/gatos")}
+          className="flex-row items-center gap-1.5"
+        >
           <AppText variant="link" className="text-[22px] leading-7">
             Ver todos
           </AppText>

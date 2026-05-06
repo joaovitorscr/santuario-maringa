@@ -32,7 +32,7 @@ export function ResidentListItem({
   compact = false,
 }: ResidentListItemProps) {
   return (
-    <Link href={`/residente/${id}`} asChild>
+    <Link href={`/private/residente/${id}`} asChild>
       <Pressable className={cn('px-4', className)}>
         <View className={cn('flex-row items-center gap-3 py-3.5', compact ? 'py-4' : 'py-3.5')}>
           <ResidentAvatar name={name} />

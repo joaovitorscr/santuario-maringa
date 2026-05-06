@@ -1,4 +1,5 @@
 import "@/env";
+import { expo } from "@better-auth/expo";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { openAPI, username } from "better-auth/plugins";
@@ -8,7 +9,7 @@ export const AUTH_BASE_PATH = "/auth";
 
 export const auth = betterAuth({
   basePath: AUTH_BASE_PATH,
-  plugins: [openAPI(), username()],
+  plugins: [expo(), openAPI(), username()],
   trustedOrigins: [
     "santuario-maringa://",
     ...(process.env.NODE_ENV === "development"

@@ -48,7 +48,7 @@ export default function RegisterScreen() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: catQueryKeys.all });
       Alert.alert('Residente cadastrado', 'O residente foi salvo com sucesso.');
-      router.replace('/gatos');
+      router.replace('/private/gatos');
     },
     onError: (error) => {
       const message =

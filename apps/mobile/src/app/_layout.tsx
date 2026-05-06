@@ -21,16 +21,23 @@ export default function RootLayout() {
       }),
   );
 
+  const isLoggedIn = !!session;
+
+  console.log({
+    isLoggedIn,
+    session,
+  });
+
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Protected guard={!!session}>
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="residente/[id]" />
+        <Stack>
+          <Stack.Protected guard={isLoggedIn}>
+            <Stack.Screen name="private" options={{ headerShown: false }} />
           </Stack.Protected>
-          <Stack.Protected guard={!session}>
-            <Stack.Screen name="sign-in" />
+
+          <Stack.Protected guard={!isLoggedIn}>
+            <Stack.Screen name="login" options={{ headerShown: false }} />
           </Stack.Protected>
         </Stack>
       </ThemeProvider>

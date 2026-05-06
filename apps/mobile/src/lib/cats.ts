@@ -1,5 +1,5 @@
 import { ApiCat, buildObservationPayload, mapApiCatToResident } from '@/data/residents';
-import { apiFetch } from '@/lib/api';
+import { apiClient, unwrapApiResponse } from '@/lib/api';
 
 export const catQueryKeys = {
   all: ['cats'] as const,
@@ -60,13 +60,17 @@ function parseDateInput(value: string) {
 }
 
 export async function fetchResidents() {
-  const cats = await apiFetch<ApiCat[]>('/cat');
-  return cats.map(mapApiCatToResident);
+  const response = await apiClient.cat.$get();
+  const payload = await unwrapApiResponse<ApiCat[]>('/cat', response);
+  return payload.data.map(mapApiCatToResident);
 }
 
 export async function fetchResident(id: string) {
-  const cat = await apiFetch<ApiCat>(`/cat/${id}`);
-  return mapApiCatToResident(cat);
+  const response = await apiClient.cat[':id'].$get({
+    param: { id },
+  });
+  const payload = await unwrapApiResponse<ApiCat>(`/cat/${id}`, response);
+  return mapApiCatToResident(payload.data);
 }
 
 export async function createCat(input: CreateCatInput) {
@@ -82,28 +86,32 @@ export async function createCat(input: CreateCatInput) {
     throw new Error('A data de nascimento deve estar no formato dd / mm / yyyy.');
   }
 
-  return apiFetch<ApiCat>('/cat', {
-    method: 'POST',
-    data: {
-      name: input.name.trim(),
-      pictureBase64: null,
-      adoptionTermBase64: null,
-      adoptionTermMimeType: null,
-      medicalExamBase64: null,
-      medicalExamMimeType: null,
-      furTypeId: null,
-      adoptionStatus: mapStatusToApi(input.status),
-      entryDate,
-      adoptionDate: null,
-      birthDate,
-      race: input.breed.trim() || 'Sem raça definida',
-      gender: mapGenderToApi(input.gender),
-      isCastrated: input.neutered,
-      isVaccinated: input.vaccinated,
-      weightKg: input.weight.trim() || null,
-      isFiv: false,
-      isFelv: false,
-      observation: buildObservationPayload(input.coat, input.notes),
+  const response = await apiClient.cat.$post({
+    json: {
+      data: {
+        name: input.name.trim(),
+        pictureBase64: null,
+        adoptionTermBase64: null,
+        adoptionTermMimeType: null,
+        medicalExamBase64: null,
+        medicalExamMimeType: null,
+        furTypeId: null,
+        adoptionStatus: mapStatusToApi(input.status),
+        entryDate,
+        adoptionDate: null,
+        birthDate,
+        race: input.breed.trim() || 'Sem raça definida',
+        gender: mapGenderToApi(input.gender),
+        isCastrated: input.neutered,
+        isVaccinated: input.vaccinated,
+        weightKg: input.weight.trim() || null,
+        isFiv: false,
+        isFelv: false,
+        observation: buildObservationPayload(input.coat, input.notes),
+      },
     },
   });
+
+  const payload = await unwrapApiResponse<ApiCat>('/cat', response);
+  return payload.data;
 }
