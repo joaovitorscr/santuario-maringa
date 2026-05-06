@@ -1,6 +1,7 @@
 {
   "name": "@santuario-maringa/api",
   "type": "module",
+  "main": "./src/index.ts",
   "scripts": {
     "dev": "NODE_ENV=development bun run --hot src/index.ts",
     "db:push": "bunx drizzle-kit push",
