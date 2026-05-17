@@ -83,6 +83,13 @@ export default function AppTabs() {
           ),
         }}
       />
+
+      <Tabs.Screen
+        name="residente/[id]"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }
