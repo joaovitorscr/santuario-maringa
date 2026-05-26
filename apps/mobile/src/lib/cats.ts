@@ -158,7 +158,7 @@ function buildCatMutationData(input: CreateCatInput) {
 }
 
 function buildCatUpdateData(input: CreateCatInput) {
-  const { entryDate, ...data } = buildCatEditableData(input);
+  const { entryDate: _entryDate, ...data } = buildCatEditableData(input);
 
   return data;
 }
