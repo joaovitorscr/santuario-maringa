@@ -1,9 +1,10 @@
 import { authClient } from "@/lib/auth-client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
+import * as NavigationBar from "expo-navigation-bar";
 import { Stack } from "expo-router";
-import React, { useState } from "react";
-import { useColorScheme } from "react-native";
+import React, { useEffect, useState } from "react";
+import { AppState, Platform, useColorScheme } from "react-native";
 
 import "../global.css";
 
@@ -22,6 +23,28 @@ export default function RootLayout() {
   );
 
   const isLoggedIn = !!session;
+
+  useEffect(() => {
+    if (Platform.OS !== "android") {
+      return;
+    }
+
+    const hideNavigationBar = () => {
+      void NavigationBar.setVisibilityAsync("hidden");
+    };
+
+    hideNavigationBar();
+
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        hideNavigationBar();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   console.log({
     isLoggedIn,
