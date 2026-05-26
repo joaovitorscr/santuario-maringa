@@ -12,11 +12,49 @@ import {
   jsonResponse,
 } from "@/contracts/base";
 import { desc, eq } from "drizzle-orm";
+import { createSchemaFactory } from "drizzle-zod";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
 const app = new OpenAPIHono();
+const { createInsertSchema } = createSchemaFactory({ zodInstance: z });
 
 const IsoDateTimeSchema = z.iso.datetime();
+const CellphoneSchema = z
+  .string()
+  .trim()
+  .regex(/^\(\d{2}\) \d{5}-\d{4}$/, "Cellphone must be in the format (00) 00000-0000");
+const CpfSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/, "CPF must be in the format 000.000.000-00")
+  .refine((value) => hasValidCpfCheckDigits(value), "CPF is invalid");
+
+function onlyDigits(value: string) {
+  return value.replace(/\D/g, "");
+}
+
+function hasValidCpfCheckDigits(value: string) {
+  const digits = onlyDigits(value);
+
+  if (digits.length !== 11 || /^(\d)\1+$/.test(digits)) {
+    return false;
+  }
+
+  const numbers = digits.split("").map(Number);
+  const firstCheckDigit = numbers[9];
+  const secondCheckDigit = numbers[10];
+
+  const calculateDigit = (sliceEnd: number) => {
+    const sum = numbers
+      .slice(0, sliceEnd)
+      .reduce((total, digit, index) => total + digit * (sliceEnd + 1 - index), 0);
+    const remainder = (sum * 10) % 11;
+
+    return remainder === 10 ? 0 : remainder;
+  };
+
+  return calculateDigit(9) === firstCheckDigit && calculateDigit(10) === secondCheckDigit;
+}
 
 const AdoptionCandidateIdParamsSchema = z
   .object({
@@ -47,13 +85,17 @@ const AdoptionCandidateResponseSchema = createApiResponseSchema(
   "AdoptionCandidateResponse",
 );
 
-const AdoptionCandidateMutationBodySchema = z
-  .object({
-    name: z.string().min(1).max(255),
-    cellphone: z.string().min(1).max(15),
-    cpf: z.string().max(14).nullable().optional(),
-    address: z.string().max(255).nullable().optional(),
-    observation: z.string().max(500).nullable().optional(),
+const AdoptionCandidateMutationBodySchema = createInsertSchema(adoptionCandidate, {
+  name: (schema) => schema.trim().min(1).max(255),
+  cellphone: CellphoneSchema,
+  cpf: CpfSchema.nullable().optional(),
+  address: (schema) => schema.trim().max(255).nullable().optional(),
+  observation: (schema) => schema.trim().max(500).nullable().optional(),
+})
+  .omit({
+    id: true,
+    createdAt: true,
+    updatedAt: true,
   })
   .openapi("AdoptionCandidateMutationBody");
 
