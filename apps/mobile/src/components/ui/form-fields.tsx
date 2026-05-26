@@ -1,19 +1,25 @@
-import { ArrowDown01Icon } from '@hugeicons/core-free-icons';
-import React, { useState } from 'react';
-import { Pressable, Switch, TextInput, View, type TextInputProps } from 'react-native';
-import { Dropdown } from 'react-native-element-dropdown';
+import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
+import React, { useState } from "react";
+import {
+  Pressable,
+  Switch,
+  TextInput,
+  View,
+  type TextInputProps,
+} from "react-native";
+import { Dropdown } from "react-native-element-dropdown";
 
-import { AppText } from '@/components/ui/app-text';
-import { AppIcon } from '@/components/ui/icon';
-import { cn } from '@/lib/cn';
-import { useTheme } from '@/hooks/use-theme';
+import { AppText } from "@/components/ui/app-text";
+import { AppIcon } from "@/components/ui/icon";
+import { cn } from "@/lib/cn";
+import { useTheme } from "@/hooks/use-theme";
 
 type FieldProps = {
   label: string;
   className?: string;
 };
 
-function FieldLabel({ label }: Pick<FieldProps, 'label'>) {
+function FieldLabel({ label }: Pick<FieldProps, "label">) {
   return (
     <AppText variant="smallBold" tone="muted" className="min-h-5">
       {label}
@@ -21,20 +27,23 @@ function FieldLabel({ label }: Pick<FieldProps, 'label'>) {
   );
 }
 
-type TextFieldProps = FieldProps &
+export type TextFieldProps = FieldProps &
   Pick<
     TextInputProps,
-    | 'value'
-    | 'placeholder'
-    | 'onChangeText'
-    | 'multiline'
-    | 'keyboardType'
-    | 'secureTextEntry'
-    | 'autoCapitalize'
-    | 'autoCorrect'
-    | 'textContentType'
+    | "value"
+    | "placeholder"
+    | "onChangeText"
+    | "multiline"
+    | "keyboardType"
+    | "secureTextEntry"
+    | "autoCapitalize"
+    | "autoCorrect"
+    | "textContentType"
+    | "onBlur"
+    | "editable"
   > & {
     revealable?: boolean;
+    error?: string;
   };
 
 export function TextField({
@@ -44,12 +53,15 @@ export function TextField({
   placeholder,
   onChangeText,
   multiline = false,
-  keyboardType = 'default',
+  keyboardType = "default",
   secureTextEntry,
-  autoCapitalize = 'sentences',
+  autoCapitalize = "sentences",
   autoCorrect = true,
   textContentType,
+  onBlur,
+  editable = true,
   revealable = false,
+  error,
 }: TextFieldProps) {
   const theme = useTheme();
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -57,7 +69,7 @@ export function TextField({
   const isSecure = shouldShowToggle ? !passwordVisible : secureTextEntry;
 
   return (
-    <View className={cn('flex-1 gap-2', className)}>
+    <View className={cn("flex-1 gap-2", className)}>
       <FieldLabel label={label} />
       <View className="relative justify-center">
         <TextInput
@@ -71,24 +83,34 @@ export function TextField({
           autoCapitalize={autoCapitalize}
           autoCorrect={autoCorrect}
           textContentType={textContentType}
-          textAlignVertical={multiline ? 'top' : 'center'}
+          onBlur={onBlur}
+          editable={editable}
+          textAlignVertical={multiline ? "top" : "center"}
           className={cn(
-            'rounded-xl border border-app-border bg-app-background px-3 py-3 text-base font-medium text-app-text dark:border-app-border-dark dark:bg-app-background-dark dark:text-app-text-dark',
-            multiline ? 'min-h-[122px]' : 'min-h-12',
-            shouldShowToggle && 'pr-16',
+            "rounded-lg border border-app-border bg-app-background px-3 py-3 text-base font-medium text-app-text dark:border-app-border-dark dark:bg-app-background-dark dark:text-app-text-dark",
+            multiline ? "min-h-[122px]" : "min-h-12",
+            shouldShowToggle && "pr-16",
+            !editable &&
+              "bg-app-surface text-app-muted dark:bg-app-surface-dark dark:text-app-muted-dark",
           )}
         />
         {shouldShowToggle ? (
           <Pressable
             onPress={() => setPasswordVisible((current) => !current)}
             className="absolute right-3 min-h-12 items-center justify-center"
-            hitSlop={8}>
+            hitSlop={8}
+          >
             <AppText variant="smallBold" tone="accent">
-              {passwordVisible ? 'Ocultar' : 'Mostrar'}
+              {passwordVisible ? "Ocultar" : "Mostrar"}
             </AppText>
           </Pressable>
         ) : null}
       </View>
+      {error ? (
+        <AppText variant="small" tone="danger">
+          {error}
+        </AppText>
+      ) : null}
     </View>
   );
 }
@@ -98,7 +120,7 @@ type SelectFieldOption = {
   value: string;
 };
 
-type SelectFieldProps = FieldProps & {
+export type SelectFieldProps = FieldProps & {
   value: string;
   onValueChange: (value: string) => void;
   items: SelectFieldOption[];
@@ -114,7 +136,7 @@ export function SelectField({
   const theme = useTheme();
 
   return (
-    <View className={cn('flex-1 gap-2', className)}>
+    <View className={cn("flex-1 gap-2", className)}>
       {label ? <FieldLabel label={label} /> : null}
       <Dropdown
         mode="modal"
@@ -122,7 +144,7 @@ export function SelectField({
         value={value}
         labelField="label"
         valueField="value"
-        placeholder={label || 'Selecione'}
+        placeholder={label || "Selecione"}
         onChange={(item) => onValueChange(item.value)}
         style={{
           minHeight: 48,
@@ -139,29 +161,39 @@ export function SelectField({
           backgroundColor: theme.backgroundElement,
         }}
         placeholderStyle={{
-          color: value.startsWith('Selecione') ? theme.textSecondary : theme.text,
+          color: value.startsWith("Selecione")
+            ? theme.textSecondary
+            : theme.text,
           fontSize: 16,
-          fontWeight: '500',
+          fontWeight: "500",
         }}
         selectedTextStyle={{
-          color: value.startsWith('Selecione') ? theme.textSecondary : theme.text,
+          color: value.startsWith("Selecione")
+            ? theme.textSecondary
+            : theme.text,
           fontSize: 16,
-          fontWeight: '500',
+          fontWeight: "500",
         }}
         itemTextStyle={{
           color: theme.text,
           fontSize: 16,
-          fontWeight: '500',
+          fontWeight: "500",
         }}
         activeColor={theme.accentSoft}
         iconColor={theme.textSecondary}
-        renderRightIcon={() => <AppIcon icon={ArrowDown01Icon} size={22} color={theme.textSecondary} />}
+        renderRightIcon={() => (
+          <AppIcon
+            icon={ArrowDown01Icon}
+            size={22}
+            color={theme.textSecondary}
+          />
+        )}
       />
     </View>
   );
 }
 
-type ToggleFieldProps = {
+export type ToggleFieldProps = {
   label: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
