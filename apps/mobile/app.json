@@ -38,7 +38,7 @@
         "expo-image-picker",
         {
           "photosPermission": "Permita que o app acesse suas fotos para cadastrar a imagem do residente.",
-          "cameraPermission": "Permita que o app use a camera para tirar a foto do residente."
+          "cameraPermission": "Permita que o app use a camera para tirar fotos do residente e dos documentos."
         }
       ],
       [

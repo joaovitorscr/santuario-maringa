@@ -263,6 +263,45 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
     });
   };
 
+  const takeDocumentPhoto = async (
+    base64Field: "adoptionTermBase64" | "medicalExamBase64",
+    mimeField: "adoptionTermMimeType" | "medicalExamMimeType",
+  ) => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (!permission.granted) {
+      Alert.alert("Permissao necessaria", "Autorize o acesso a camera para tirar uma foto.");
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.82,
+      base64: true,
+    });
+
+    if (result.canceled) {
+      return;
+    }
+
+    const asset = result.assets[0];
+
+    if (!asset.base64) {
+      Alert.alert("Foto nao selecionada", "Nao foi possivel ler a foto tirada.");
+      return;
+    }
+
+    form.setValue(base64Field, asset.base64, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+    form.setValue(mimeField, asset.mimeType ?? "image/jpeg", {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
   const removeDocument = (
     base64Field: "adoptionTermBase64" | "medicalExamBase64",
     mimeField: "adoptionTermMimeType" | "medicalExamMimeType",
@@ -411,6 +450,7 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
           mimeType={adoptionTermMimeType}
           hasFile={Boolean(adoptionTermBase64)}
           onSelect={() => pickDocument("adoptionTermBase64", "adoptionTermMimeType")}
+          onTakePhoto={() => takeDocumentPhoto("adoptionTermBase64", "adoptionTermMimeType")}
           onRemove={() => removeDocument("adoptionTermBase64", "adoptionTermMimeType")}
         />
         <DocumentAction
@@ -419,6 +459,7 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
           mimeType={medicalExamMimeType}
           hasFile={Boolean(medicalExamBase64)}
           onSelect={() => pickDocument("medicalExamBase64", "medicalExamMimeType")}
+          onTakePhoto={() => takeDocumentPhoto("medicalExamBase64", "medicalExamMimeType")}
           onRemove={() => removeDocument("medicalExamBase64", "medicalExamMimeType")}
         />
       </Surface>
@@ -457,6 +498,7 @@ function DocumentAction({
   mimeType,
   hasFile,
   onSelect,
+  onTakePhoto,
   onRemove,
 }: {
   icon: IconSvgElement;
@@ -464,6 +506,7 @@ function DocumentAction({
   mimeType: string;
   hasFile: boolean;
   onSelect: () => void;
+  onTakePhoto: () => void;
   onRemove: () => void;
 }) {
   const theme = useTheme();
@@ -487,6 +530,7 @@ function DocumentAction({
           label={hasFile ? "Trocar" : "Selecionar"}
           onPress={onSelect}
         />
+        <PhotoAction icon={Camera01Icon} label="Camera" onPress={onTakePhoto} />
         {hasFile ? (
           <PhotoAction icon={ImageDelete01Icon} label="Remover" tone="danger" onPress={onRemove} />
         ) : null}
