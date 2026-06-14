@@ -82,12 +82,14 @@ export default function CatsScreen() {
             value={statusFilter}
             onValueChange={(value) => setStatusFilter(value as (typeof statusOptions)[number])}
             items={statusItems}
+            className="flex-1"
           />
           <SelectField
             label="Gênero"
             value={genderFilter}
             onValueChange={(value) => setGenderFilter(value as (typeof genderOptions)[number])}
             items={genderItems}
+            className="flex-1"
           />
         </View>
       </Surface>
@@ -122,6 +124,7 @@ export default function CatsScreen() {
               <ResidentListItem
                 id={resident.id}
                 name={resident.name}
+                pictureBase64={resident.pictureBase64}
                 meta={`${resident.sex} · ${resident.coat}`}
                 detail={`Entrada: ${resident.entryDate}`}
                 status={resident.status}

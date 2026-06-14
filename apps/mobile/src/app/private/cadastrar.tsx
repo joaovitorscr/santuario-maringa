@@ -1,194 +1,131 @@
-import { ArrowLeft01Icon } from '@hugeicons/core-free-icons';
-import React, { useState } from 'react';
-import { Alert, View } from 'react-native';
-import { router } from 'expo-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Add01Icon,
+  Agreement01Icon,
+  ArrowLeft01Icon,
+  CheckListIcon,
+  FavouriteIcon,
+} from "@hugeicons/core-free-icons";
+import { type IconSvgElement } from "@hugeicons/react-native";
+import { router, type Href } from "expo-router";
+import React, { useState } from "react";
+import { Pressable, View } from "react-native";
 
-import { PrimaryButton } from '@/components/ui/button';
-import { SelectField, TextField, ToggleField } from '@/components/ui/form-fields';
-import { AppIcon } from '@/components/ui/icon';
-import { HeaderBlock, SectionLabel } from '@/components/ui/layout';
-import { ScreenScroll } from '@/components/ui/screen';
-import { Surface } from '@/components/ui/surface';
-import { ApiError } from '@/lib/api';
-import { catQueryKeys, createCat } from '@/lib/cats';
+import { AdoptionCandidateForm } from "@/components/adoption-candidate";
+import { CatForm } from "@/components/cat-form";
+import { AppText } from "@/components/ui/app-text";
+import { AppIcon } from "@/components/ui/icon";
+import { HeaderBlock } from "@/components/ui/layout";
+import { ScreenScroll } from "@/components/ui/screen";
+import { Surface } from "@/components/ui/surface";
+import { UserForm } from "@/components/user-form";
 
-const genderOptions = [
-  { label: 'Selecione', value: 'Selecione' },
-  { label: 'Fêmea', value: 'Fêmea' },
-  { label: 'Macho', value: 'Macho' },
-] as const;
+type RegisterType = "user" | "cat" | "adoptionCandidate" | "adoption";
 
-const statusOptions = [
-  { label: 'Selecione', value: 'Selecione' },
-  { label: 'Disponível', value: 'Disponível' },
-  { label: 'Indisponível', value: 'Indisponível' },
-  { label: 'Em Processo de Adoção', value: 'Em Processo de Adoção' },
-  { label: 'Adotado', value: 'Adotado' },
-] as const;
+const newAdoptionHref = "/private/adocao/nova" as Href;
+
+const registerOptions: {
+  type: RegisterType;
+  title: string;
+  description: string;
+  icon: IconSvgElement;
+}[] = [
+  {
+    type: "user",
+    title: "Novo usuário",
+    description: "Adicionar uma pessoa com acesso ao sistema.",
+    icon: Add01Icon,
+  },
+  {
+    type: "cat",
+    title: "Gato",
+    description: "Cadastrar um novo residente do santuário.",
+    icon: FavouriteIcon,
+  },
+  {
+    type: "adoptionCandidate",
+    title: "Candidato à adoção",
+    description: "Registrar uma pessoa interessada em adotar.",
+    icon: CheckListIcon,
+  },
+  {
+    type: "adoption",
+    title: "Adoção",
+    description: "Criar um registro vinculando candidato e residente.",
+    icon: Agreement01Icon,
+  },
+];
 
 export default function RegisterScreen() {
-  const [name, setName] = useState('');
-  const [gender, setGender] = useState<'Selecione' | 'Fêmea' | 'Macho'>('Selecione');
-  const [status, setStatus] = useState<
-    'Selecione' | 'Disponível' | 'Indisponível' | 'Em Processo de Adoção' | 'Adotado'
-  >('Selecione');
-  const [coat, setCoat] = useState('');
-  const [breed, setBreed] = useState('');
-  const [weight, setWeight] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [entryDate, setEntryDate] = useState('21 / 04 / 2026');
-  const [birthDate, setBirthDate] = useState('');
-  const [neutered, setNeutered] = useState(false);
-  const [vaccinated, setVaccinated] = useState(false);
-  const [notes, setNotes] = useState('');
-  const queryClient = useQueryClient();
-  const createCatMutation = useMutation({
-    mutationFn: createCat,
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: catQueryKeys.all });
-      Alert.alert('Residente cadastrado', 'O residente foi salvo com sucesso.');
-      router.replace('/private/gatos');
-    },
-    onError: (error) => {
-      const message =
-        error instanceof ApiError || error instanceof Error ? error.message : 'Tente novamente.';
+  const [selectedType, setSelectedType] = useState<RegisterType | null>(null);
 
-      Alert.alert('Falha ao cadastrar', message);
-    },
-  });
-
-  const handleSubmit = () => {
-    if (!name.trim()) {
-      Alert.alert('Nome obrigatório', 'Informe o nome do residente.');
+  const handleBack = () => {
+    if (selectedType) {
+      setSelectedType(null);
       return;
     }
 
-    if (gender === 'Selecione') {
-      Alert.alert('Gênero obrigatório', 'Selecione o gênero do residente.');
-      return;
-    }
-
-    if (status === 'Selecione') {
-      Alert.alert('Status obrigatório', 'Selecione o status do residente.');
-      return;
-    }
-
-    createCatMutation.mutate({
-      name,
-      gender,
-      status,
-      coat,
-      breed,
-      weight,
-      entryDate,
-      birthDate,
-      neutered,
-      vaccinated,
-      notes,
-    });
+    router.back();
   };
 
-  return (
-    <ScreenScroll contentClassName="gap-3 pb-28 pt-6">
+  const renderChooser = () => (
+    <>
       <View className="flex-row items-start gap-2">
-        <View className="w-10 items-center pt-1">
-          <AppIcon icon={ArrowLeft01Icon} size={30} />
-        </View>
+        <Pressable className="w-9 items-center pt-1" onPress={handleBack} hitSlop={8}>
+          <AppIcon icon={ArrowLeft01Icon} size={24} />
+        </Pressable>
         <HeaderBlock
           className="flex-1"
-          title="Novo Residente"
-          subtitle="Preencha as informações do novo residente"
+          title="Cadastrar"
+          subtitle="Escolha o tipo de cadastro que deseja iniciar"
         />
       </View>
 
-      <Surface className="gap-4 p-4">
-        <SectionLabel>Informações Básicas</SectionLabel>
-        <TextField label="Nome" placeholder="Nome do gato" value={name} onChangeText={setName} />
-        <View className="flex-row gap-4">
-          <SelectField
-            label="Gênero"
-            value={gender}
-            onValueChange={(value) => setGender(value as typeof gender)}
-            items={[...genderOptions]}
-          />
-          <SelectField
-            label="Status"
-            value={status}
-            onValueChange={(value) => setStatus(value as typeof status)}
-            items={[...statusOptions]}
-          />
+      <Surface tone="accentSoft" className="gap-3 p-5">
+        <View className="h-14 w-14 items-center justify-center rounded-full border-[6px] border-app-surface bg-app-surface dark:border-app-surface-dark dark:bg-app-surface-dark">
+          <AppIcon icon={Add01Icon} size={24} />
         </View>
-        <TextField
-          label="Cor / Pelagem"
-          placeholder="Ex: Preta e branca, Caramelo..."
-          value={coat}
-          onChangeText={setCoat}
-        />
-        <View className="flex-row gap-4">
-          <TextField
-            label="Raça (opcional)"
-            placeholder="Ex: SRD, Persa..."
-            value={breed}
-            onChangeText={setBreed}
-          />
-          <TextField
-            label="Peso em kg (opcional)"
-            placeholder="Ex: 4.5"
-            value={weight}
-            onChangeText={setWeight}
-            keyboardType="number-pad"
-          />
-        </View>
-        <TextField
-          label="URL da Foto (opcional)"
-          placeholder="https://..."
-          value={imageUrl}
-          onChangeText={setImageUrl}
-          keyboardType="url"
-        />
-      </Surface>
-
-      <Surface className="gap-4 p-4">
-        <SectionLabel>Datas</SectionLabel>
-        <View className="flex-row gap-4">
-          <TextField
-            label="Data de Entrada"
-            placeholder="dd / mm / yyyy"
-            value={entryDate}
-            onChangeText={setEntryDate}
-          />
-          <TextField
-            label="Nascimento (opcional)"
-            placeholder="dd / mm / yyyy"
-            value={birthDate}
-            onChangeText={setBirthDate}
-          />
+        <View className="gap-1">
+          <AppText variant="subtitle">Novo Cadastro</AppText>
+          <AppText tone="muted">Selecione uma categoria para continuar</AppText>
         </View>
       </Surface>
 
-      <Surface className="gap-4 p-4">
-        <SectionLabel>Saúde</SectionLabel>
-        <ToggleField label="Castrado(a)" value={neutered} onValueChange={setNeutered} />
-        <ToggleField label="Vacinado(a)" value={vaccinated} onValueChange={setVaccinated} />
-      </Surface>
+      <View className="gap-3">
+        {registerOptions.map((option) => (
+          <Pressable
+            key={option.type}
+            onPress={() => {
+              if (option.type === "adoption") {
+                router.push(newAdoptionHref);
+                return;
+              }
 
-      <Surface className="gap-4 p-4">
-        <SectionLabel>Observações</SectionLabel>
-        <TextField
-          label=""
-          placeholder="Histórico médico, comportamento, informações adicionais..."
-          value={notes}
-          onChangeText={setNotes}
-          multiline
-        />
-      </Surface>
+              setSelectedType(option.type);
+            }}
+          >
+            <Surface className="min-h-[104px] flex-row items-center gap-4 p-4">
+              <View className="h-12 w-12 items-center justify-center rounded-lg bg-app-accent-soft dark:bg-app-accent-soft-dark">
+                <AppIcon icon={option.icon} size={24} />
+              </View>
+              <View className="flex-1 gap-1">
+                <AppText className="text-lg font-bold leading-6">{option.title}</AppText>
+                <AppText tone="muted">{option.description}</AppText>
+              </View>
+            </Surface>
+          </Pressable>
+        ))}
+      </View>
+    </>
+  );
 
-      <PrimaryButton
-        label={createCatMutation.isPending ? 'Cadastrando...' : 'Cadastrar Residente'}
-        onPress={handleSubmit}
-        disabled={createCatMutation.isPending}
-      />
+  return (
+    <ScreenScroll contentClassName="gap-3 pb-28 pt-3">
+      {!selectedType ? renderChooser() : null}
+      {selectedType === "cat" ? <CatForm onBack={handleBack} /> : null}
+      {selectedType === "adoptionCandidate" ? (
+        <AdoptionCandidateForm onBack={handleBack} onSuccess={() => setSelectedType(null)} />
+      ) : null}
+      {selectedType === "user" ? <UserForm onBack={handleBack} /> : null}
     </ScreenScroll>
   );
 }

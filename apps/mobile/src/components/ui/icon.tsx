@@ -1,7 +1,7 @@
-import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react-native';
-import React from 'react';
+import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react-native";
+import React from "react";
 
-import { useTheme } from '@/hooks/use-theme';
+import { useTheme } from "@/hooks/use-theme";
 
 type AppIconProps = {
   icon: IconSvgElement;
@@ -14,11 +14,6 @@ export function AppIcon({ icon, size = 24, color, strokeWidth = 1.8 }: AppIconPr
   const theme = useTheme();
 
   return (
-    <HugeiconsIcon
-      icon={icon}
-      size={size}
-      color={color ?? theme.text}
-      strokeWidth={strokeWidth}
-    />
+    <HugeiconsIcon icon={icon} size={size} color={color ?? theme.text} strokeWidth={strokeWidth} />
   );
 }

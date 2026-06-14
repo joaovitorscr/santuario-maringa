@@ -1,69 +1,91 @@
 export type ResidentStatus =
-  | 'Disponível'
-  | 'Indisponível'
-  | 'Em Processo de Adoção'
-  | 'Adotado';
+  | "Disponível"
+  | "Indisponível"
+  | "Em Processo de Adoção"
+  | "Adotado";
 
-export type ResidentSex = 'Fêmea' | 'Macho';
+export type ResidentSex = "Fêmea" | "Macho";
 
 export type Resident = {
   id: string;
   name: string;
+  pictureBase64: string | null;
+  adoptionTermBase64: string | null;
+  adoptionTermMimeType: string | null;
+  medicalExamBase64: string | null;
+  medicalExamMimeType: string | null;
+  furTypeId: string | null;
   sex: ResidentSex;
   coat: string;
   breed: string;
   weightKg: string;
   entryDate: string;
+  adoptionDate: string;
   birthDate: string;
   status: ResidentStatus;
   neutered: boolean;
   vaccinated: boolean;
+  fiv: boolean;
+  felv: boolean;
   notes: string;
 };
 
 export type ApiCat = {
   id: string;
   name: string;
+  pictureBase64: string | null;
+  adoptionTermBase64: string | null;
+  adoptionTermMimeType: string | null;
+  medicalExamBase64: string | null;
+  medicalExamMimeType: string | null;
+  furTypeId: string | null;
   furType: {
     id: string;
     name: string;
   } | null;
-  adoptionStatus: 'Adopted' | 'Adoption Process' | 'Available' | 'Not Available';
+  adoptionStatus:
+    | "Adopted"
+    | "Adoption Process"
+    | "Available"
+    | "Not Available";
   entryDate: string;
+  adoptionDate: string | null;
   birthDate: string | null;
   race: string;
-  gender: 'Male' | 'Female';
+  gender: "Male" | "Female";
   isCastrated: boolean;
   isVaccinated: boolean;
   weightKg: string | null;
+  isFiv: boolean | null;
+  isFelv: boolean | null;
   observation: string | null;
 };
 
-const coatPrefix = 'Pelagem:';
+const coatPrefix = "Pelagem:";
 
 function formatDate(value: string | null) {
   if (!value) {
-    return 'Não informado';
+    return "Não informado";
   }
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return 'Não informado';
+    return "Não informado";
   }
 
-  return new Intl.DateTimeFormat('pt-BR').format(date);
+  return new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
-function mapStatus(status: ApiCat['adoptionStatus']): ResidentStatus {
-  if (status === 'Adopted') return 'Adotado';
-  if (status === 'Adoption Process') return 'Em Processo de Adoção';
-  if (status === 'Available') return 'Disponível';
-  return 'Indisponível';
+function mapStatus(status: ApiCat["adoptionStatus"]): ResidentStatus {
+  if (status === "Adopted") return "Adotado";
+  if (status === "Adoption Process") return "Em Processo de Adoção";
+  if (status === "Available") return "Disponível";
+  return "Indisponível";
 }
 
-function mapSex(gender: ApiCat['gender']): ResidentSex {
-  return gender === 'Female' ? 'Fêmea' : 'Macho';
+function mapSex(gender: ApiCat["gender"]): ResidentSex {
+  return gender === "Female" ? "Fêmea" : "Macho";
 }
 
 function extractCoat(observation: string | null, fallback: string) {
@@ -71,7 +93,7 @@ function extractCoat(observation: string | null, fallback: string) {
     return fallback;
   }
 
-  const [firstLine] = observation.split('\n');
+  const [firstLine] = observation.split("\n");
 
   if (firstLine.startsWith(coatPrefix)) {
     const coat = firstLine.slice(coatPrefix.length).trim();
@@ -83,17 +105,17 @@ function extractCoat(observation: string | null, fallback: string) {
 
 function extractNotes(observation: string | null) {
   if (!observation) {
-    return 'Sem observações.';
+    return "Sem observações.";
   }
 
-  const lines = observation.split('\n');
+  const lines = observation.split("\n");
 
   if (lines[0]?.startsWith(coatPrefix)) {
-    const notes = lines.slice(1).join('\n').trim();
-    return notes.length > 0 ? notes : 'Sem observações.';
+    const notes = lines.slice(1).join("\n").trim();
+    return notes.length > 0 ? notes : "Sem observações.";
   }
 
-  return observation.trim() || 'Sem observações.';
+  return observation.trim() || "Sem observações.";
 }
 
 export function mapApiCatToResident(cat: ApiCat): Resident {
@@ -102,21 +124,33 @@ export function mapApiCatToResident(cat: ApiCat): Resident {
   return {
     id: cat.id,
     name: cat.name,
+    pictureBase64: cat.pictureBase64,
+    adoptionTermBase64: cat.adoptionTermBase64,
+    adoptionTermMimeType: cat.adoptionTermMimeType,
+    medicalExamBase64: cat.medicalExamBase64,
+    medicalExamMimeType: cat.medicalExamMimeType,
+    furTypeId: cat.furTypeId,
     sex: mapSex(cat.gender),
     coat: extractCoat(cat.observation, fallbackCoat),
     breed: cat.race,
-    weightKg: cat.weightKg ?? 'Não informado',
+    weightKg: cat.weightKg ?? "Não informado",
     entryDate: formatDate(cat.entryDate),
+    adoptionDate: formatDate(cat.adoptionDate),
     birthDate: formatDate(cat.birthDate),
     status: mapStatus(cat.adoptionStatus),
     neutered: cat.isCastrated,
     vaccinated: cat.isVaccinated,
+    fiv: Boolean(cat.isFiv),
+    felv: Boolean(cat.isFelv),
     notes: extractNotes(cat.observation),
   };
 }
 
 export function buildObservationPayload(coat: string, notes: string) {
-  const parts = [coat.trim() ? `${coatPrefix} ${coat.trim()}` : '', notes.trim()].filter(Boolean);
+  const parts = [
+    coat.trim() ? `${coatPrefix} ${coat.trim()}` : "",
+    notes.trim(),
+  ].filter(Boolean);
 
-  return parts.length > 0 ? parts.join('\n\n') : null;
+  return parts.length > 0 ? parts.join("\n\n") : null;
 }

@@ -6,6 +6,7 @@ import { corsMiddleware } from "./middleware/cors";
 import { isDevelopmentMode, loggerMiddleware } from "./middleware/logger";
 import { requireSession } from "./middleware/require-session";
 import { adoptionCandidatesRoutes } from "./routes/adoption-candidates";
+import { adoptionRoutes } from "./routes/adoptions";
 import { registerAuthRoutes } from "./routes/auth";
 import { catRoutes } from "./routes/cat";
 import { registerDocsRoutes } from "./routes/docs";
@@ -26,6 +27,7 @@ if (isDevelopmentMode()) {
 app.use("*", requireSession);
 
 app.route("/", adoptionCandidatesRoutes);
+app.route("/", adoptionRoutes);
 app.route("/", catRoutes);
 
 registerDocsRoutes(app, getOpenApiDocument, getLlmsMarkdown);
