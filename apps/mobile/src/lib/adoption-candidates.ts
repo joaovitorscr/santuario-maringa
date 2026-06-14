@@ -1,9 +1,4 @@
-import {
-  ApiError,
-  type ApiAdoptionCandidate,
-  apiClient,
-  unwrapApiResponse,
-} from "@/lib/api";
+import { ApiError, type ApiAdoptionCandidate, apiClient, unwrapApiResponse } from "@/lib/api";
 
 export type { ApiAdoptionCandidate } from "@/lib/api";
 
@@ -28,6 +23,7 @@ type ApiClientResponse = {
   ok: boolean;
   status: number;
   json: () => Promise<unknown>;
+  text: () => Promise<string>;
 };
 
 function buildAdoptionCandidateData(input: CreateAdoptionCandidateInput) {
@@ -42,10 +38,7 @@ function buildAdoptionCandidateData(input: CreateAdoptionCandidateInput) {
 
 export async function fetchAdoptionCandidates() {
   const response = await apiClient.adoption_candidates.$get();
-  const payload = await unwrapApiResponse<ApiAdoptionCandidate[]>(
-    "/adoption_candidates",
-    response,
-  );
+  const payload = await unwrapApiResponse<ApiAdoptionCandidate[]>("/adoption_candidates", response);
   return payload.data;
 }
 
@@ -60,27 +53,19 @@ export async function fetchAdoptionCandidate(id: string) {
   return payload.data;
 }
 
-export async function createAdoptionCandidate(
-  input: CreateAdoptionCandidateInput,
-) {
+export async function createAdoptionCandidate(input: CreateAdoptionCandidateInput) {
   const response = await apiClient.adoption_candidates.$post({
     json: {
       data: buildAdoptionCandidateData(input),
     },
   });
 
-  const payload = await unwrapApiResponse<ApiAdoptionCandidate>(
-    "/adoption_candidates",
-    response,
-  );
+  const payload = await unwrapApiResponse<ApiAdoptionCandidate>("/adoption_candidates", response);
   return payload.data;
 }
 
-export async function updateAdoptionCandidate(
-  input: UpdateAdoptionCandidateInput,
-) {
-  const patchCandidate = apiClient.adoption_candidates[":id"]
-    .$patch as unknown as (args: {
+export async function updateAdoptionCandidate(input: UpdateAdoptionCandidateInput) {
+  const patchCandidate = apiClient.adoption_candidates[":id"].$patch as unknown as (args: {
     param: { id: string };
     json: { data: ReturnType<typeof buildAdoptionCandidateData> };
   }) => Promise<ApiClientResponse>;

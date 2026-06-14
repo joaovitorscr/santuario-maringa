@@ -394,6 +394,8 @@ export default function AppTabs() {
 
       <Tabs.Screen name="candidato/[id]" options={{ href: null }} />
 
+      <Tabs.Screen name="adocao/nova" options={{ href: null, title: "Nova adoção" }} />
+
       <Tabs.Screen name="perfil" options={{ href: null, title: "Perfil" }} />
     </Tabs>
   );

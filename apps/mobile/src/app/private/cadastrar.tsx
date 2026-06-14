@@ -1,11 +1,12 @@
 import {
   Add01Icon,
+  Agreement01Icon,
   ArrowLeft01Icon,
   CheckListIcon,
   FavouriteIcon,
 } from "@hugeicons/core-free-icons";
 import { type IconSvgElement } from "@hugeicons/react-native";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, View } from "react-native";
 
@@ -18,7 +19,9 @@ import { ScreenScroll } from "@/components/ui/screen";
 import { Surface } from "@/components/ui/surface";
 import { UserForm } from "@/components/user-form";
 
-type RegisterType = "user" | "cat" | "adoptionCandidate";
+type RegisterType = "user" | "cat" | "adoptionCandidate" | "adoption";
+
+const newAdoptionHref = "/private/adocao/nova" as Href;
 
 const registerOptions: {
   type: RegisterType;
@@ -44,6 +47,12 @@ const registerOptions: {
     description: "Registrar uma pessoa interessada em adotar.",
     icon: CheckListIcon,
   },
+  {
+    type: "adoption",
+    title: "Adoção",
+    description: "Criar um registro vinculando candidato e residente.",
+    icon: Agreement01Icon,
+  },
 ];
 
 export default function RegisterScreen() {
@@ -61,11 +70,7 @@ export default function RegisterScreen() {
   const renderChooser = () => (
     <>
       <View className="flex-row items-start gap-2">
-        <Pressable
-          className="w-9 items-center pt-1"
-          onPress={handleBack}
-          hitSlop={8}
-        >
+        <Pressable className="w-9 items-center pt-1" onPress={handleBack} hitSlop={8}>
           <AppIcon icon={ArrowLeft01Icon} size={24} />
         </Pressable>
         <HeaderBlock
@@ -89,16 +94,21 @@ export default function RegisterScreen() {
         {registerOptions.map((option) => (
           <Pressable
             key={option.type}
-            onPress={() => setSelectedType(option.type)}
+            onPress={() => {
+              if (option.type === "adoption") {
+                router.push(newAdoptionHref);
+                return;
+              }
+
+              setSelectedType(option.type);
+            }}
           >
             <Surface className="min-h-[104px] flex-row items-center gap-4 p-4">
               <View className="h-12 w-12 items-center justify-center rounded-lg bg-app-accent-soft dark:bg-app-accent-soft-dark">
                 <AppIcon icon={option.icon} size={24} />
               </View>
               <View className="flex-1 gap-1">
-                <AppText className="text-lg font-bold leading-6">
-                  {option.title}
-                </AppText>
+                <AppText className="text-lg font-bold leading-6">{option.title}</AppText>
                 <AppText tone="muted">{option.description}</AppText>
               </View>
             </Surface>
@@ -113,10 +123,7 @@ export default function RegisterScreen() {
       {!selectedType ? renderChooser() : null}
       {selectedType === "cat" ? <CatForm onBack={handleBack} /> : null}
       {selectedType === "adoptionCandidate" ? (
-        <AdoptionCandidateForm
-          onBack={handleBack}
-          onSuccess={() => setSelectedType(null)}
-        />
+        <AdoptionCandidateForm onBack={handleBack} onSuccess={() => setSelectedType(null)} />
       ) : null}
       {selectedType === "user" ? <UserForm onBack={handleBack} /> : null}
     </ScreenScroll>

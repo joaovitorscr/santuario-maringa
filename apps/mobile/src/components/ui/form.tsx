@@ -26,10 +26,9 @@ export function Form<TFieldValues extends FieldValues>({
   return <FormProvider {...form}>{children}</FormProvider>;
 }
 
-export function FormField<
-  TFieldValues extends FieldValues,
-  TName extends FieldPath<TFieldValues>,
->(props: ControllerProps<TFieldValues, TName>) {
+export function FormField<TFieldValues extends FieldValues, TName extends FieldPath<TFieldValues>>(
+  props: ControllerProps<TFieldValues, TName>,
+) {
   return <Controller {...props} />;
 }
 
@@ -85,11 +84,12 @@ export function FormSelectField<
     <FormField
       control={control}
       name={name}
-      render={({ field }) => (
+      render={({ field, fieldState }) => (
         <SelectField
           {...props}
           value={typeof field.value === "string" ? field.value : ""}
           onValueChange={(value) => field.onChange(value as PathValue<TFieldValues, TName>)}
+          error={fieldState.error?.message}
         />
       )}
     />

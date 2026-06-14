@@ -1,12 +1,6 @@
 import { ArrowDown01Icon } from "@hugeicons/core-free-icons";
 import React, { useState } from "react";
-import {
-  Pressable,
-  Switch,
-  TextInput,
-  View,
-  type TextInputProps,
-} from "react-native";
+import { Pressable, Switch, TextInput, View, type TextInputProps } from "react-native";
 import { Dropdown } from "react-native-element-dropdown";
 
 import { AppText } from "@/components/ui/app-text";
@@ -69,7 +63,7 @@ export function TextField({
   const isSecure = shouldShowToggle ? !passwordVisible : secureTextEntry;
 
   return (
-    <View className={cn("flex-1 gap-2", className)}>
+    <View className={cn("gap-2", className)}>
       <FieldLabel label={label} />
       <View className="relative justify-center">
         <TextInput
@@ -124,6 +118,7 @@ export type SelectFieldProps = FieldProps & {
   value: string;
   onValueChange: (value: string) => void;
   items: SelectFieldOption[];
+  error?: string;
 };
 
 export function SelectField({
@@ -132,11 +127,12 @@ export function SelectField({
   onValueChange,
   items,
   className,
+  error,
 }: SelectFieldProps) {
   const theme = useTheme();
 
   return (
-    <View className={cn("flex-1 gap-2", className)}>
+    <View className={cn("gap-2", className)}>
       {label ? <FieldLabel label={label} /> : null}
       <Dropdown
         mode="modal"
@@ -161,16 +157,12 @@ export function SelectField({
           backgroundColor: theme.backgroundElement,
         }}
         placeholderStyle={{
-          color: value.startsWith("Selecione")
-            ? theme.textSecondary
-            : theme.text,
+          color: value.startsWith("Selecione") ? theme.textSecondary : theme.text,
           fontSize: 16,
           fontWeight: "500",
         }}
         selectedTextStyle={{
-          color: value.startsWith("Selecione")
-            ? theme.textSecondary
-            : theme.text,
+          color: value.startsWith("Selecione") ? theme.textSecondary : theme.text,
           fontSize: 16,
           fontWeight: "500",
         }}
@@ -182,13 +174,14 @@ export function SelectField({
         activeColor={theme.accentSoft}
         iconColor={theme.textSecondary}
         renderRightIcon={() => (
-          <AppIcon
-            icon={ArrowDown01Icon}
-            size={22}
-            color={theme.textSecondary}
-          />
+          <AppIcon icon={ArrowDown01Icon} size={22} color={theme.textSecondary} />
         )}
       />
+      {error ? (
+        <AppText variant="small" tone="danger">
+          {error}
+        </AppText>
+      ) : null}
     </View>
   );
 }

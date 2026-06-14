@@ -1,8 +1,4 @@
-import {
-  ApiCat,
-  buildObservationPayload,
-  mapApiCatToResident,
-} from "@/data/residents";
+import { ApiCat, buildObservationPayload, mapApiCatToResident } from "@/data/residents";
 import { ApiError, apiClient, unwrapApiResponse } from "@/lib/api";
 
 export const catQueryKeys = {
@@ -41,11 +37,10 @@ type ApiClientResponse = {
   ok: boolean;
   status: number;
   json: () => Promise<unknown>;
+  text: () => Promise<string>;
 };
 
-function mapStatusToApi(
-  status: CreateCatInput["status"],
-): ApiCat["adoptionStatus"] {
+function mapStatusToApi(status: CreateCatInput["status"]): ApiCat["adoptionStatus"] {
   if (status === "Adotado") return "Adopted";
   if (status === "Em Processo de Adoção") return "Adoption Process";
   if (status === "Disponível") return "Available";
@@ -119,14 +114,8 @@ function buildCatEditableData(input: CreateCatInput) {
     throw new Error("A data de entrada deve estar no formato dd / mm / yyyy.");
   }
 
-  const adoptionDate = parseOptionalDateInput(
-    input.adoptionDate,
-    "A data de adocao",
-  );
-  const birthDate = parseOptionalDateInput(
-    input.birthDate,
-    "A data de nascimento",
-  );
+  const adoptionDate = parseOptionalDateInput(input.adoptionDate, "A data de adocao");
+  const birthDate = parseOptionalDateInput(input.birthDate, "A data de nascimento");
 
   return {
     name: input.name.trim(),

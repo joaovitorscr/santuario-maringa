@@ -23,12 +23,7 @@ import { useForm } from "react-hook-form";
 
 import { ResidentAvatar } from "@/components/resident-avatar";
 import { PrimaryButton } from "@/components/ui/button";
-import {
-  Form,
-  FormSelectField,
-  FormTextField,
-  FormToggleField,
-} from "@/components/ui/form";
+import { Form, FormSelectField, FormTextField, FormToggleField } from "@/components/ui/form";
 import { AppText } from "@/components/ui/app-text";
 import { AppIcon } from "@/components/ui/icon";
 import { HeaderBlock } from "@/components/ui/layout";
@@ -82,8 +77,7 @@ function valuesFromResident(resident?: Resident): CatFormValues {
     medicalExamBase64: resident.medicalExamBase64 ?? "",
     medicalExamMimeType: resident.medicalExamMimeType ?? "",
     entryDate: resident.entryDate === "Não informado" ? "" : resident.entryDate,
-    adoptionDate:
-      resident.adoptionDate === "Não informado" ? "" : resident.adoptionDate,
+    adoptionDate: resident.adoptionDate === "Não informado" ? "" : resident.adoptionDate,
     birthDate: resident.birthDate === "Não informado" ? "" : resident.birthDate,
     neutered: resident.neutered,
     vaccinated: resident.vaccinated,
@@ -117,9 +111,7 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
     },
     onError: (error) => {
       const message =
-        error instanceof ApiError || error instanceof Error
-          ? error.message
-          : "Tente novamente.";
+        error instanceof ApiError || error instanceof Error ? error.message : "Tente novamente.";
 
       Alert.alert("Falha ao cadastrar", message);
     },
@@ -133,21 +125,13 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
           queryKey: catQueryKeys.detail(updatedResident.id),
         }),
       ]);
-      queryClient.setQueryData(
-        catQueryKeys.detail(updatedResident.id),
-        updatedResident,
-      );
-      Alert.alert(
-        "Residente atualizado",
-        "As alterações foram salvas com sucesso.",
-      );
+      queryClient.setQueryData(catQueryKeys.detail(updatedResident.id), updatedResident);
+      Alert.alert("Residente atualizado", "As alterações foram salvas com sucesso.");
       onBack();
     },
     onError: (error) => {
       const message =
-        error instanceof ApiError || error instanceof Error
-          ? error.message
-          : "Tente novamente.";
+        error instanceof ApiError || error instanceof Error ? error.message : "Tente novamente.";
 
       Alert.alert("Falha ao atualizar", message);
     },
@@ -192,10 +176,7 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
 
   const setPickedImage = (asset?: ImagePicker.ImagePickerAsset) => {
     if (!asset?.base64) {
-      Alert.alert(
-        "Foto nao selecionada",
-        "Nao foi possivel ler a imagem escolhida.",
-      );
+      Alert.alert("Foto nao selecionada", "Nao foi possivel ler a imagem escolhida.");
       return;
     }
 
@@ -209,10 +190,7 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert(
-        "Permissao necessaria",
-        "Autorize o acesso as fotos para selecionar uma imagem.",
-      );
+      Alert.alert("Permissao necessaria", "Autorize o acesso as fotos para selecionar uma imagem.");
       return;
     }
 
@@ -233,10 +211,7 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
 
     if (!permission.granted) {
-      Alert.alert(
-        "Permissao necessaria",
-        "Autorize o acesso a camera para tirar uma foto.",
-      );
+      Alert.alert("Permissao necessaria", "Autorize o acesso a camera para tirar uma foto.");
       return;
     }
 
@@ -305,11 +280,7 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
   return (
     <Form {...form}>
       <View className="flex-row items-start gap-2">
-        <Pressable
-          className="w-9 items-center pt-1"
-          onPress={onBack}
-          hitSlop={8}
-        >
+        <Pressable className="w-9 items-center pt-1" onPress={onBack} hitSlop={8}>
           <AppIcon icon={ArrowLeft01Icon} size={24} />
         </Pressable>
         <HeaderBlock
@@ -326,11 +297,7 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
       <Surface tone="accentSoft" className="overflow-hidden">
         <View className="items-center gap-4 px-5 pb-5 pt-6">
           <View className="rounded-full border-[6px] border-app-surface bg-app-surface p-1 dark:border-app-surface-dark dark:bg-app-surface-dark">
-            <ResidentAvatar
-              name={profileName}
-              pictureBase64={pictureBase64}
-              size="hero"
-            />
+            <ResidentAvatar name={profileName} pictureBase64={pictureBase64} size="hero" />
           </View>
           <View className="items-center gap-1">
             <AppText variant="subtitle" className="text-center">
@@ -344,16 +311,8 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
 
         <View className="border-t border-app-border/70 bg-app-surface/70 px-3 py-3 dark:border-app-border-dark dark:bg-app-surface-dark/70">
           <View className="flex-row gap-2">
-            <PhotoAction
-              icon={ImageAdd01Icon}
-              label="Galeria"
-              onPress={selectPhoto}
-            />
-            <PhotoAction
-              icon={Camera01Icon}
-              label="Camera"
-              onPress={takePhoto}
-            />
+            <PhotoAction icon={ImageAdd01Icon} label="Galeria" onPress={selectPhoto} />
+            <PhotoAction icon={Camera01Icon} label="Camera" onPress={takePhoto} />
             {pictureBase64 ? (
               <PhotoAction
                 icon={ImageDelete01Icon}
@@ -368,21 +327,19 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
 
       <Surface className="gap-4 p-4">
         <SectionHeader icon={InformationCircleIcon} label="Informações" />
-        <FormTextField<CatFormValues, "name">
-          name="name"
-          label="Nome"
-          placeholder="Nome do gato"
-        />
+        <FormTextField<CatFormValues, "name"> name="name" label="Nome" placeholder="Nome do gato" />
         <View className="flex-row gap-4">
           <FormSelectField<CatFormValues, "gender">
             name="gender"
             label="Gênero"
             items={[...genderOptions]}
+            className="flex-1"
           />
           <FormSelectField<CatFormValues, "status">
             name="status"
             label="Status"
             items={[...statusOptions]}
+            className="flex-1"
           />
         </View>
         <FormTextField<CatFormValues, "coat">
@@ -395,12 +352,14 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
             name="breed"
             label="Raça (opcional)"
             placeholder="Ex: SRD, Persa..."
+            className="flex-1"
           />
           <FormTextField<CatFormValues, "weight">
             name="weight"
             label="Peso em kg (opcional)"
             placeholder="Ex: 4.5"
             keyboardType="number-pad"
+            className="flex-1"
           />
         </View>
         <FormTextField<CatFormValues, "furTypeId">
@@ -420,11 +379,13 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
             label="Data de Entrada"
             placeholder="dd / mm / yyyy"
             editable={false}
+            className="flex-1"
           />
           <FormTextField<CatFormValues, "birthDate">
             name="birthDate"
             label="Nascimento (opcional)"
             placeholder="dd / mm / yyyy"
+            className="flex-1"
           />
         </View>
         <FormTextField<CatFormValues, "adoptionDate">
@@ -436,14 +397,8 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
 
       <Surface className="gap-4 p-4">
         <SectionHeader icon={FavouriteIcon} label="Saúde" />
-        <FormToggleField<CatFormValues, "neutered">
-          name="neutered"
-          label="Castrado(a)"
-        />
-        <FormToggleField<CatFormValues, "vaccinated">
-          name="vaccinated"
-          label="Vacinado(a)"
-        />
+        <FormToggleField<CatFormValues, "neutered"> name="neutered" label="Castrado(a)" />
+        <FormToggleField<CatFormValues, "vaccinated"> name="vaccinated" label="Vacinado(a)" />
         <FormToggleField<CatFormValues, "fiv"> name="fiv" label="FIV" />
         <FormToggleField<CatFormValues, "felv"> name="felv" label="FeLV" />
       </Surface>
@@ -455,24 +410,16 @@ export function CatForm({ onBack, mode = "create", resident }: CatFormProps) {
           label="Termo de Adoção"
           mimeType={adoptionTermMimeType}
           hasFile={Boolean(adoptionTermBase64)}
-          onSelect={() =>
-            pickDocument("adoptionTermBase64", "adoptionTermMimeType")
-          }
-          onRemove={() =>
-            removeDocument("adoptionTermBase64", "adoptionTermMimeType")
-          }
+          onSelect={() => pickDocument("adoptionTermBase64", "adoptionTermMimeType")}
+          onRemove={() => removeDocument("adoptionTermBase64", "adoptionTermMimeType")}
         />
         <DocumentAction
           icon={MedicalFileIcon}
           label="Exame Médico"
           mimeType={medicalExamMimeType}
           hasFile={Boolean(medicalExamBase64)}
-          onSelect={() =>
-            pickDocument("medicalExamBase64", "medicalExamMimeType")
-          }
-          onRemove={() =>
-            removeDocument("medicalExamBase64", "medicalExamMimeType")
-          }
+          onSelect={() => pickDocument("medicalExamBase64", "medicalExamMimeType")}
+          onRemove={() => removeDocument("medicalExamBase64", "medicalExamMimeType")}
         />
       </Surface>
 
@@ -541,12 +488,7 @@ function DocumentAction({
           onPress={onSelect}
         />
         {hasFile ? (
-          <PhotoAction
-            icon={ImageDelete01Icon}
-            label="Remover"
-            tone="danger"
-            onPress={onRemove}
-          />
+          <PhotoAction icon={ImageDelete01Icon} label="Remover" tone="danger" onPress={onRemove} />
         ) : null}
       </View>
     </View>
@@ -571,11 +513,7 @@ function PhotoAction({
       className="min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-lg border border-app-border bg-app-surface px-3 dark:border-app-border-dark dark:bg-app-surface-dark"
       onPress={onPress}
     >
-      <AppIcon
-        icon={icon}
-        size={20}
-        color={tone === "danger" ? "#E11D48" : theme.textSecondary}
-      />
+      <AppIcon icon={icon} size={20} color={tone === "danger" ? "#E11D48" : theme.textSecondary} />
       <AppText
         variant="smallBold"
         className={tone === "danger" ? "text-app-danger" : ""}

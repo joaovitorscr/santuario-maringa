@@ -38,8 +38,7 @@ export default function CatsScreen() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] =
     useState<(typeof statusOptions)[number]>("Todos os status");
-  const [genderFilter, setGenderFilter] =
-    useState<(typeof genderOptions)[number]>("Ambos");
+  const [genderFilter, setGenderFilter] = useState<(typeof genderOptions)[number]>("Ambos");
   const {
     data: residents = [],
     isLoading,
@@ -55,20 +54,15 @@ export default function CatsScreen() {
       resident.name.toLowerCase().includes(query.toLowerCase()) ||
       resident.coat.toLowerCase().includes(query.toLowerCase());
 
-    const matchesStatus =
-      statusFilter === "Todos os status" || resident.status === statusFilter;
-    const matchesGender =
-      genderFilter === "Ambos" || resident.sex === genderFilter;
+    const matchesStatus = statusFilter === "Todos os status" || resident.status === statusFilter;
+    const matchesGender = genderFilter === "Ambos" || resident.sex === genderFilter;
 
     return matchesQuery && matchesStatus && matchesGender;
   });
 
   return (
     <ScreenScroll>
-      <HeaderBlock
-        title="Residentes"
-        subtitle={`${filteredResidents.length} registros`}
-      />
+      <HeaderBlock title="Residentes" subtitle={`${filteredResidents.length} registros`} />
 
       <Surface className="overflow-hidden">
         <View className="flex-row items-center gap-2 border-b border-app-border px-4 py-3.5 dark:border-app-border-dark">
@@ -86,18 +80,16 @@ export default function CatsScreen() {
           <SelectField
             label="Status"
             value={statusFilter}
-            onValueChange={(value) =>
-              setStatusFilter(value as (typeof statusOptions)[number])
-            }
+            onValueChange={(value) => setStatusFilter(value as (typeof statusOptions)[number])}
             items={statusItems}
+            className="flex-1"
           />
           <SelectField
             label="Gênero"
             value={genderFilter}
-            onValueChange={(value) =>
-              setGenderFilter(value as (typeof genderOptions)[number])
-            }
+            onValueChange={(value) => setGenderFilter(value as (typeof genderOptions)[number])}
             items={genderItems}
+            className="flex-1"
           />
         </View>
       </Surface>
