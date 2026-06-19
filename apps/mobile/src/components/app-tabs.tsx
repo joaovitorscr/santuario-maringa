@@ -9,7 +9,14 @@ import {
 } from "@hugeicons/core-free-icons";
 import { router, Tabs } from "expo-router";
 import React, { useState } from "react";
-import { ActivityIndicator, Alert, Image, Modal, Pressable, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Pressable,
+  View,
+} from "react-native";
 
 import { AppText } from "@/components/ui/app-text";
 import { AppIcon } from "@/components/ui/icon";
@@ -25,7 +32,9 @@ function HomeTabIcon({
   color: string;
   accent: string;
 }) {
-  return <AppIcon icon={Home01Icon} size={20} color={focused ? accent : color} />;
+  return (
+    <AppIcon icon={Home01Icon} size={20} color={focused ? accent : color} />
+  );
 }
 
 function ListTabIcon({
@@ -37,7 +46,9 @@ function ListTabIcon({
   color: string;
   accent: string;
 }) {
-  return <AppIcon icon={CheckListIcon} size={20} color={focused ? accent : color} />;
+  return (
+    <AppIcon icon={CheckListIcon} size={20} color={focused ? accent : color} />
+  );
 }
 
 function CandidatesTabIcon({
@@ -49,7 +60,9 @@ function CandidatesTabIcon({
   color: string;
   accent: string;
 }) {
-  return <AppIcon icon={UserGroupIcon} size={20} color={focused ? accent : color} />;
+  return (
+    <AppIcon icon={UserGroupIcon} size={20} color={focused ? accent : color} />
+  );
 }
 
 function AdoptionsTabIcon({
@@ -61,7 +74,13 @@ function AdoptionsTabIcon({
   color: string;
   accent: string;
 }) {
-  return <AppIcon icon={Agreement01Icon} size={20} color={focused ? accent : color} />;
+  return (
+    <AppIcon
+      icon={Agreement01Icon}
+      size={20}
+      color={focused ? accent : color}
+    />
+  );
 }
 
 function RegisterTabIcon({
@@ -78,7 +97,12 @@ function RegisterTabIcon({
       className="mt-[-32px] h-12 w-12 items-center justify-center rounded-full"
       style={{ backgroundColor: accent }}
     >
-      <AppIcon icon={Add01Icon} size={24} color={focused ? "#17201A" : color} strokeWidth={2.2} />
+      <AppIcon
+        icon={Add01Icon}
+        size={24}
+        color={focused ? "#17201A" : color}
+        strokeWidth={2.2}
+      />
     </View>
   );
 }
@@ -92,6 +116,15 @@ function getUserInitials(name: string) {
     .join("");
 
   return initials || "U";
+}
+
+function hasAdminAccess(role?: string | null) {
+  return (
+    role
+      ?.split(",")
+      .map((item) => item.trim())
+      .includes("admin") ?? false
+  );
 }
 
 function UserHeaderAvatar({
@@ -118,7 +151,11 @@ function UserHeaderAvatar({
       }}
     >
       {image ? (
-        <Image source={{ uri: image }} accessibilityIgnoresInvertColors className="h-full w-full" />
+        <Image
+          source={{ uri: image }}
+          accessibilityIgnoresInvertColors
+          className="h-full w-full"
+        />
       ) : (
         <AppText className="text-sm font-extrabold leading-5 text-app-accent dark:text-app-accent-dark">
           {getUserInitials(name)}
@@ -133,8 +170,10 @@ function UserMenuDialog({
   userName,
   userEmail,
   userImage,
+  canManageUsers,
   isSigningOut,
   onClose,
+  onAdminPress,
   onProfilePress,
   onLogoutPress,
 }: {
@@ -142,8 +181,10 @@ function UserMenuDialog({
   userName: string;
   userEmail?: string | null;
   userImage?: string | null;
+  canManageUsers: boolean;
   isSigningOut: boolean;
   onClose: () => void;
+  onAdminPress: () => void;
   onProfilePress: () => void;
   onLogoutPress: () => void;
 }) {
@@ -208,6 +249,21 @@ function UserMenuDialog({
             </View>
           </View>
 
+          {canManageUsers ? (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                onPress={onAdminPress}
+                className="min-h-[52px] flex-row items-center gap-3 px-4"
+              >
+                <AppIcon icon={UserGroupIcon} size={22} color={colors.text} />
+                <AppText className="flex-1 font-bold">Usuários</AppText>
+              </Pressable>
+
+              <View className="h-px bg-app-border dark:bg-app-border-dark" />
+            </>
+          ) : null}
+
           <Pressable
             accessibilityRole="button"
             onPress={onProfilePress}
@@ -244,12 +300,18 @@ export default function AppTabs() {
   const colors = useTheme();
   const { data: session } = authClient.useSession();
   const userName = session?.user.name || session?.user.email || "Usuário";
+  const canManageUsers = hasAdminAccess(session?.user.role);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleProfilePress = () => {
     setIsUserMenuOpen(false);
     router.push("/private/perfil");
+  };
+
+  const handleAdminPress = () => {
+    setIsUserMenuOpen(false);
+    router.push("/private/usuarios");
   };
 
   const handleLogoutPress = async () => {
@@ -259,7 +321,10 @@ export default function AppTabs() {
       const result = await authClient.signOut();
 
       if (result.error) {
-        Alert.alert("Falha ao sair", result.error.message || "Tente novamente.");
+        Alert.alert(
+          "Falha ao sair",
+          result.error.message || "Tente novamente.",
+        );
         return;
       }
 
@@ -310,8 +375,10 @@ export default function AppTabs() {
                 userName={userName}
                 userEmail={session.user.email}
                 userImage={session.user.image}
+                canManageUsers={canManageUsers}
                 isSigningOut={isSigningOut}
                 onClose={() => setIsUserMenuOpen(false)}
+                onAdminPress={handleAdminPress}
                 onProfilePress={handleProfilePress}
                 onLogoutPress={handleLogoutPress}
               />
@@ -340,7 +407,11 @@ export default function AppTabs() {
         options={{
           title: "Início",
           tabBarIcon: ({ color, focused }) => (
-            <HomeTabIcon accent={colors.accent} color={color} focused={focused} />
+            <HomeTabIcon
+              accent={colors.accent}
+              color={color}
+              focused={focused}
+            />
           ),
         }}
       />
@@ -350,7 +421,11 @@ export default function AppTabs() {
         options={{
           title: "Gatos",
           tabBarIcon: ({ color, focused }) => (
-            <ListTabIcon accent={colors.accent} color={color} focused={focused} />
+            <ListTabIcon
+              accent={colors.accent}
+              color={color}
+              focused={focused}
+            />
           ),
         }}
       />
@@ -360,7 +435,11 @@ export default function AppTabs() {
         options={{
           title: "",
           tabBarIcon: ({ color, focused }) => (
-            <RegisterTabIcon accent={colors.accent} color={color} focused={focused} />
+            <RegisterTabIcon
+              accent={colors.accent}
+              color={color}
+              focused={focused}
+            />
           ),
         }}
       />
@@ -370,7 +449,11 @@ export default function AppTabs() {
         options={{
           title: "Candidatos",
           tabBarIcon: ({ color, focused }) => (
-            <CandidatesTabIcon accent={colors.accent} color={color} focused={focused} />
+            <CandidatesTabIcon
+              accent={colors.accent}
+              color={color}
+              focused={focused}
+            />
           ),
         }}
       />
@@ -380,7 +463,11 @@ export default function AppTabs() {
         options={{
           title: "Adoções",
           tabBarIcon: ({ color, focused }) => (
-            <AdoptionsTabIcon accent={colors.accent} color={color} focused={focused} />
+            <AdoptionsTabIcon
+              accent={colors.accent}
+              color={color}
+              focused={focused}
+            />
           ),
         }}
       />
@@ -394,7 +481,20 @@ export default function AppTabs() {
 
       <Tabs.Screen name="candidato/[id]" options={{ href: null }} />
 
-      <Tabs.Screen name="adocao/nova" options={{ href: null, title: "Nova adoção" }} />
+      <Tabs.Screen
+        name="adocao/nova"
+        options={{ href: null, title: "Nova adoção" }}
+      />
+
+      <Tabs.Screen
+        name="usuarios"
+        options={{ href: null, title: "Usuários" }}
+      />
+
+      <Tabs.Screen
+        name="funcao/[id]"
+        options={{ href: null, title: "Função" }}
+      />
 
       <Tabs.Screen name="perfil" options={{ href: null, title: "Perfil" }} />
     </Tabs>

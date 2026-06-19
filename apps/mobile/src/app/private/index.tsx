@@ -33,12 +33,8 @@ export default function HomeScreen() {
     queryFn: fetchResidents,
   });
   const latestResidents = residents.slice(0, 5);
-  const neuteredCount = residents.filter(
-    (resident) => resident.neutered,
-  ).length;
-  const vaccinatedCount = residents.filter(
-    (resident) => resident.vaccinated,
-  ).length;
+  const neuteredCount = residents.filter((resident) => resident.neutered).length;
+  const vaccinatedCount = residents.filter((resident) => resident.vaccinated).length;
   const unavailableCount = residents.filter(
     (resident) => resident.status === "Indisponível",
   ).length;
@@ -77,17 +73,12 @@ export default function HomeScreen() {
 
       <View className="flex-row flex-wrap gap-4">
         {stats.map((stat) => (
-          <Surface
-            key={stat.label}
-            className="min-h-[118px] w-[47.5%] justify-between p-4"
-          >
+          <Surface key={stat.label} className="min-h-[118px] w-[47.5%] justify-between p-4">
             <View className="flex-row items-center justify-between">
               <AppText variant="label">{stat.label}</AppText>
               <AppIcon icon={stat.icon} size={18} color={theme.textSecondary} />
             </View>
-            <AppText className="text-[28px] font-extrabold leading-8">
-              {stat.value}
-            </AppText>
+            <AppText className="text-[28px] font-extrabold leading-8">{stat.value}</AppText>
             <AppText tone="muted">{stat.helper}</AppText>
           </Surface>
         ))}
@@ -114,9 +105,7 @@ export default function HomeScreen() {
         ) : error ? (
           <View className="px-4 py-6">
             <AppText tone="danger">
-              {error instanceof ApiError
-                ? error.message
-                : "Não foi possível carregar o resumo."}
+              {error instanceof ApiError ? error.message : "Não foi possível carregar o resumo."}
             </AppText>
           </View>
         ) : latestResidents.length === 0 ? (

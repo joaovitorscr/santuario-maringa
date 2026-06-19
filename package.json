@@ -8,8 +8,10 @@
   "scripts": {
     "dev": "turbo run dev --summarize",
     "dev:api": "turbo run dev --filter=@santuario-maringa/api --summarize",
-    "dev:mobile:ios": "turbo run ios --filter=@santuario-maringa/mobile --summarize",
-    "dev:mobile:android": "turbo run android --filter=@santuario-maringa/mobile --summarize",
+    "dev:mobile:ios": "turbo run dev:ios --filter=@santuario-maringa/mobile --summarize",
+    "dev:mobile:android": "turbo run dev:android --filter=@santuario-maringa/mobile --summarize",
+    "build:mobile:ios": "turbo run ios --filter=@santuario-maringa/mobile --summarize",
+    "build:mobile:android": "turbo run android --filter=@santuario-maringa/mobile --summarize",
     "build": "turbo run build",
     "build:api": "turbo run build --filter=@santuario-maringa/api",
     "build:mobile": "turbo run build --filter=@santuario-maringa/mobile",

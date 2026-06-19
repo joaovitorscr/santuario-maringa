@@ -6,6 +6,7 @@ import {
   FavouriteIcon,
 } from "@hugeicons/core-free-icons";
 import { type IconSvgElement } from "@hugeicons/react-native";
+import { useQuery } from "@tanstack/react-query";
 import { router, type Href } from "expo-router";
 import React, { useState } from "react";
 import { Pressable, View } from "react-native";
@@ -18,6 +19,7 @@ import { HeaderBlock } from "@/components/ui/layout";
 import { ScreenScroll } from "@/components/ui/screen";
 import { Surface } from "@/components/ui/surface";
 import { UserForm } from "@/components/user-form";
+import { adminRolesQueryKey, listAdminRoles } from "@/lib/admin";
 
 type RegisterType = "user" | "cat" | "adoptionCandidate" | "adoption";
 
@@ -57,6 +59,16 @@ const registerOptions: {
 
 export default function RegisterScreen() {
   const [selectedType, setSelectedType] = useState<RegisterType | null>(null);
+  const { data: roles = [] } = useQuery({
+    queryKey: adminRolesQueryKey,
+    queryFn: listAdminRoles,
+    enabled: selectedType === "user",
+  });
+  const roleItems = roles.map((role) => ({
+    label: role.name,
+    value: role.slug,
+    description: role.description,
+  }));
 
   const handleBack = () => {
     if (selectedType) {
@@ -70,7 +82,11 @@ export default function RegisterScreen() {
   const renderChooser = () => (
     <>
       <View className="flex-row items-start gap-2">
-        <Pressable className="w-9 items-center pt-1" onPress={handleBack} hitSlop={8}>
+        <Pressable
+          className="w-9 items-center pt-1"
+          onPress={handleBack}
+          hitSlop={8}
+        >
           <AppIcon icon={ArrowLeft01Icon} size={24} />
         </Pressable>
         <HeaderBlock
@@ -108,7 +124,9 @@ export default function RegisterScreen() {
                 <AppIcon icon={option.icon} size={24} />
               </View>
               <View className="flex-1 gap-1">
-                <AppText className="text-lg font-bold leading-6">{option.title}</AppText>
+                <AppText className="text-lg font-bold leading-6">
+                  {option.title}
+                </AppText>
                 <AppText tone="muted">{option.description}</AppText>
               </View>
             </Surface>
@@ -123,9 +141,14 @@ export default function RegisterScreen() {
       {!selectedType ? renderChooser() : null}
       {selectedType === "cat" ? <CatForm onBack={handleBack} /> : null}
       {selectedType === "adoptionCandidate" ? (
-        <AdoptionCandidateForm onBack={handleBack} onSuccess={() => setSelectedType(null)} />
+        <AdoptionCandidateForm
+          onBack={handleBack}
+          onSuccess={() => setSelectedType(null)}
+        />
       ) : null}
-      {selectedType === "user" ? <UserForm onBack={handleBack} /> : null}
+      {selectedType === "user" ? (
+        <UserForm roles={roleItems} onBack={handleBack} />
+      ) : null}
     </ScreenScroll>
   );
 }

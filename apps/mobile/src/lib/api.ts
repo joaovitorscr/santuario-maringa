@@ -111,6 +111,39 @@ type CreateAdoptionPayload = {
   };
 };
 
+export type ApiAdminPermission = {
+  id: string;
+  key: string;
+  label: string;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ApiAdminRole = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  isSystem: boolean;
+  userCount: number;
+  createdAt: string;
+  updatedAt: string;
+  permissions: ApiAdminPermission[];
+};
+
+type CreateAdminRolePayload = {
+  data: {
+    name: string;
+    description?: string | null;
+    permissionKeys: string[];
+  };
+};
+
+type UpdateAdminRolePayload = {
+  data: Partial<CreateAdminRolePayload["data"]>;
+};
+
 export const apiContract = new Hono()
   .get("/cat", (c) => c.json({} as ApiSuccessResponse<ApiCat[]>))
   .get("/cat/:id", (c) => c.json({} as ApiSuccessResponse<ApiCat>))
@@ -123,12 +156,16 @@ export const apiContract = new Hono()
     return c.json({} as ApiSuccessResponse<ApiCat>);
   })
   .delete("/cat/:id", (c) => c.body(null, 204))
-  .get("/adoption_candidates", (c) => c.json({} as ApiSuccessResponse<ApiAdoptionCandidate[]>))
+  .get("/adoption_candidates", (c) =>
+    c.json({} as ApiSuccessResponse<ApiAdoptionCandidate[]>),
+  )
   .post("/adoption_candidates", async (c) => {
     await c.req.json<CreateAdoptionCandidatePayload>();
     return c.json({} as ApiSuccessResponse<ApiAdoptionCandidate>, 201);
   })
-  .get("/adoption_candidates/:id", (c) => c.json({} as ApiSuccessResponse<ApiAdoptionCandidate>))
+  .get("/adoption_candidates/:id", (c) =>
+    c.json({} as ApiSuccessResponse<ApiAdoptionCandidate>),
+  )
   .patch("/adoption_candidates/:id", async (c) => {
     await c.req.json<UpdateAdoptionCandidatePayload>();
     return c.json({} as ApiSuccessResponse<ApiAdoptionCandidate>);
@@ -140,7 +177,21 @@ export const apiContract = new Hono()
   .post("/adoptions", async (c) => {
     await c.req.json<CreateAdoptionPayload>();
     return c.json({} as ApiSuccessResponse<ApiAdoption>, 201);
-  });
+  })
+  .get("/admin/roles", (c) => c.json({} as ApiSuccessResponse<ApiAdminRole[]>))
+  .post("/admin/roles", async (c) => {
+    await c.req.json<CreateAdminRolePayload>();
+    return c.json({} as ApiSuccessResponse<ApiAdminRole>, 201);
+  })
+  .patch("/admin/roles/:id", async (c) => {
+    await c.req.json<UpdateAdminRolePayload>();
+    return c.json({} as ApiSuccessResponse<ApiAdminRole>);
+  })
+  .delete("/admin/roles/:id", (c) => c.body(null, 204))
+  .get("/admin/permissions", (c) =>
+    c.json({} as ApiSuccessResponse<ApiAdminPermission[]>),
+  )
+  .delete("/admin/users/:id", (c) => c.body(null, 204));
 
 export class ApiError extends Error {
   status: number;
@@ -157,7 +208,8 @@ export class ApiError extends Error {
 }
 
 function buildRequestError(path: string, error: unknown) {
-  const details = error instanceof Error ? error.message : `Falha ao chamar ${path}`;
+  const details =
+    error instanceof Error ? error.message : `Falha ao chamar ${path}`;
 
   return new ApiError(
     `Nao foi possivel conectar com a API. Verifique se ${apiBaseUrl} esta acessivel pelo dispositivo. (${details})`,
@@ -171,7 +223,12 @@ function buildResponseError(path: string, status: number, payload: unknown) {
   if (payload && typeof payload === "object" && "error" in payload) {
     const apiError = payload as ApiErrorResponse;
     const details = `HTTP ${status} em ${path}`;
-    return new ApiError(`${apiError.error.message} (${details})`, status, path, details);
+    return new ApiError(
+      `${apiError.error.message} (${details})`,
+      status,
+      path,
+      details,
+    );
   }
 
   if (status === 404 && typeof payload === "string") {
@@ -186,10 +243,19 @@ function buildResponseError(path: string, status: number, payload: unknown) {
 
   if (typeof payload === "string" && payload.trim()) {
     const details = `HTTP ${status} em ${path}`;
-    return new ApiError(`${payload.trim()} (${details})`, status, path, details);
+    return new ApiError(
+      `${payload.trim()} (${details})`,
+      status,
+      path,
+      details,
+    );
   }
 
-  return new ApiError(`A API respondeu com erro. (HTTP ${status} em ${path})`, status, path);
+  return new ApiError(
+    `A API respondeu com erro. (HTTP ${status} em ${path})`,
+    status,
+    path,
+  );
 }
 
 const customFetch: typeof fetch = async (input, init) => {
@@ -210,7 +276,10 @@ const customFetch: typeof fetch = async (input, init) => {
     const path =
       typeof input === "string"
         ? new URL(input, apiBaseUrl).pathname
-        : new URL(input instanceof URL ? input.toString() : input.url, apiBaseUrl).pathname;
+        : new URL(
+            input instanceof URL ? input.toString() : input.url,
+            apiBaseUrl,
+          ).pathname;
 
     throw buildRequestError(path, error);
   }
@@ -268,7 +337,11 @@ export async function unwrapApiResponse<TData>(
   }
 
   if (!payload || typeof payload === "string") {
-    throw new ApiError(`A API respondeu sem dados válidos para ${path}.`, response.status, path);
+    throw new ApiError(
+      `A API respondeu sem dados válidos para ${path}.`,
+      response.status,
+      path,
+    );
   }
 
   return payload as ApiSuccessResponse<TData>;
