@@ -1,10 +1,6 @@
 import { db } from "@/db";
 import { account } from "@/db/schema/account";
-import {
-  adminPermission,
-  adminRole,
-  adminRolePermission,
-} from "@/db/schema/admin-role";
+import { adminPermission, adminRole, adminRolePermission } from "@/db/schema/admin-role";
 import { session } from "@/db/schema/session";
 import { user as userTable } from "@/db/schema/user";
 import { buildApiErrorResponse, buildApiResponse } from "@/contracts/base";
@@ -82,15 +78,13 @@ const defaultRoles = [
   {
     slug: "admin",
     name: "Administrador",
-    description:
-      "Controle completo de usuários, funções, permissões e dados do app.",
+    description: "Controle completo de usuários, funções, permissões e dados do app.",
     permissionKeys: defaultPermissions.map((permission) => permission.key),
   },
   {
     slug: "manager",
     name: "Gestor",
-    description:
-      "Pode gerenciar a operação e apoiar a administração de usuários.",
+    description: "Pode gerenciar a operação e apoiar a administração de usuários.",
     permissionKeys: [
       "users.read",
       "users.create",
@@ -105,11 +99,7 @@ const defaultRoles = [
     slug: "volunteer",
     name: "Voluntário",
     description: "Acesso operacional para o cuidado diário.",
-    permissionKeys: [
-      "cats.manage",
-      "adoptions.manage",
-      "adoption_candidates.manage",
-    ],
+    permissionKeys: ["cats.manage", "adoptions.manage", "adoption_candidates.manage"],
   },
   {
     slug: "user",
@@ -133,17 +123,10 @@ const RolePatchSchema = z.object({
   }),
 });
 
-function isAdminRole(role?: string | null) {
-  return role
-    ?.split(",")
-    .map((item) => item.trim().toLowerCase())
-    .includes("admin");
-}
-
 function forbidden() {
   return buildApiErrorResponse({
     code: "FORBIDDEN",
-    message: "Apenas administradores podem gerenciar usuários e permissões.",
+    message: "Você não tem permissão para executar esta ação.",
   });
 }
 
@@ -154,10 +137,78 @@ function invalidRequest(message: string) {
   });
 }
 
-function getAdminUser(c: Context<AdminEnv>) {
+function getPrimaryRoles(role?: string | null) {
+  return (
+    role
+      ?.split(",")
+      .map((item) => item.trim().toLowerCase())
+      .filter(Boolean) ?? []
+  );
+}
+
+async function getRolePermissions(role?: string | null) {
+  await ensureDefaultRolesAndPermissions();
+
+  const roleSlugs = getPrimaryRoles(role);
+
+  if (roleSlugs.includes("admin")) {
+    return defaultPermissions.map((permission) => permission.key);
+  }
+
+  if (roleSlugs.length === 0) {
+    return [];
+  }
+
+  const roles = await db.query.adminRole.findMany({
+    where: inArray(adminRole.slug, roleSlugs),
+    with: {
+      rolePermissions: {
+        with: {
+          permission: true,
+        },
+      },
+    },
+  });
+
+  return Array.from(
+    new Set(
+      roles.flatMap((roleItem) =>
+        roleItem.rolePermissions
+          .map((rolePermission) => rolePermission.permission?.key)
+          .filter((key): key is string => Boolean(key)),
+      ),
+    ),
+  ).toSorted();
+}
+
+async function hasPermission(role: string | null | undefined, permission: string) {
+  return (await getRolePermissions(role)).includes(permission);
+}
+
+async function hasAnyPermission(role: string | null | undefined, permissions: string[]) {
+  const userPermissions = await getRolePermissions(role);
+
+  return permissions.some((permission) => userPermissions.includes(permission));
+}
+
+async function requirePermission(c: Context<AdminEnv>, permission: string) {
   const authUser = c.get("user");
 
-  return authUser && isAdminRole(authUser.role) ? authUser : null;
+  if (!(await hasPermission(authUser?.role, permission))) {
+    return c.json(forbidden(), 403);
+  }
+
+  return null;
+}
+
+async function requireAnyPermission(c: Context<AdminEnv>, permissions: string[]) {
+  const authUser = c.get("user");
+
+  if (!(await hasAnyPermission(authUser?.role, permissions))) {
+    return c.json(forbidden(), 403);
+  }
+
+  return null;
 }
 
 function slugifyRoleName(value: string) {
@@ -237,9 +288,7 @@ async function ensureDefaultRolesAndPermissions() {
     }
 
     const rolePermissions = permissions
-      .filter((permission) =>
-        defaultRole.permissionKeys.includes(permission.key as never),
-      )
+      .filter((permission) => defaultRole.permissionKeys.includes(permission.key as never))
       .map((permission) => ({
         roleId: role.id,
         permissionId: permission.id,
@@ -247,10 +296,7 @@ async function ensureDefaultRolesAndPermissions() {
       }));
 
     if (rolePermissions.length > 0) {
-      await db
-        .insert(adminRolePermission)
-        .values(rolePermissions)
-        .onConflictDoNothing();
+      await db.insert(adminRolePermission).values(rolePermissions).onConflictDoNothing();
     }
   }
 }
@@ -292,7 +338,7 @@ async function serializeRoles() {
     updatedAt: role.updatedAt.toISOString(),
     permissions: role.rolePermissions
       .map((rolePermission) => rolePermission.permission)
-      .sort((left, right) => left.label.localeCompare(right.label))
+      .toSorted((left, right) => left.label.localeCompare(right.label))
       .map((permission) => ({
         id: permission.id,
         key: permission.key,
@@ -305,9 +351,7 @@ async function serializeRoles() {
 }
 
 async function setRolePermissions(roleId: string, permissionKeys: string[]) {
-  await db
-    .delete(adminRolePermission)
-    .where(eq(adminRolePermission.roleId, roleId));
+  await db.delete(adminRolePermission).where(eq(adminRolePermission.roleId, roleId));
 
   if (permissionKeys.length === 0) {
     return;
@@ -334,28 +378,37 @@ async function setRolePermissions(roleId: string, permissionKeys: string[]) {
     .onConflictDoNothing();
 }
 
-app.use("/admin/*", async (c, next) => {
-  if (!getAdminUser(c)) {
-    return c.json(forbidden(), 403);
-  }
+app.get("/me/permissions", async (c) => {
+  const authUser = c.get("user");
 
-  await next();
+  return c.json(
+    buildApiResponse({
+      role: authUser?.role ?? null,
+      permissions: await getRolePermissions(authUser?.role),
+    }),
+    200,
+  );
 });
 
 app.get("/admin/roles", async (c) => {
+  const permissionError = await requirePermission(c, "roles.read");
+  if (permissionError) {
+    return permissionError;
+  }
+
   return c.json(buildApiResponse(await serializeRoles()), 200);
 });
 
 app.post("/admin/roles", async (c) => {
-  const parsed = RoleMutationSchema.safeParse(
-    await c.req.json().catch(() => null),
-  );
+  const permissionError = await requirePermission(c, "roles.create");
+  if (permissionError) {
+    return permissionError;
+  }
+
+  const parsed = RoleMutationSchema.safeParse(await c.req.json().catch(() => null));
 
   if (!parsed.success) {
-    return c.json(
-      invalidRequest("Informe nome e permissões válidas."),
-      400,
-    );
+    return c.json(invalidRequest("Informe nome e permissões válidas."), 400);
   }
 
   const { name, description, permissionKeys } = parsed.data.data;
@@ -384,31 +437,27 @@ app.post("/admin/roles", async (c) => {
   } catch (error) {
     await db.delete(adminRole).where(eq(adminRole.id, createdRole.id));
     return c.json(
-      invalidRequest(
-        error instanceof Error ? error.message : "Permissões inválidas.",
-      ),
+      invalidRequest(error instanceof Error ? error.message : "Permissões inválidas."),
       400,
     );
   }
 
   return c.json(
-    buildApiResponse(
-      (await serializeRoles()).find((role) => role.id === createdRole.id),
-    ),
+    buildApiResponse((await serializeRoles()).find((role) => role.id === createdRole.id)),
     201,
   );
 });
 
 app.patch("/admin/roles/:id", async (c) => {
-  const parsed = RolePatchSchema.safeParse(
-    await c.req.json().catch(() => null),
-  );
+  const permissionError = await requirePermission(c, "roles.update");
+  if (permissionError) {
+    return permissionError;
+  }
+
+  const parsed = RolePatchSchema.safeParse(await c.req.json().catch(() => null));
 
   if (!parsed.success) {
-    return c.json(
-      invalidRequest("Informe dados válidos para atualizar a função."),
-      400,
-    );
+    return c.json(invalidRequest("Informe dados válidos para atualizar a função."), 400);
   }
 
   const id = c.req.param("id");
@@ -442,14 +491,10 @@ app.patch("/admin/roles/:id", async (c) => {
       }
 
       if (payload.permissionKeys) {
-        await tx
-          .delete(adminRolePermission)
-          .where(eq(adminRolePermission.roleId, id));
+        await tx.delete(adminRolePermission).where(eq(adminRolePermission.roleId, id));
 
         if (payload.permissionKeys.length > 0) {
-          const uniquePermissionKeys = Array.from(
-            new Set(payload.permissionKeys),
-          );
+          const uniquePermissionKeys = Array.from(new Set(payload.permissionKeys));
           const permissions = await tx.query.adminPermission.findMany({
             where: inArray(adminPermission.key, uniquePermissionKeys),
           });
@@ -470,22 +515,20 @@ app.patch("/admin/roles/:id", async (c) => {
     });
   } catch (error) {
     return c.json(
-      invalidRequest(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível salvar a função.",
-      ),
+      invalidRequest(error instanceof Error ? error.message : "Não foi possível salvar a função."),
       400,
     );
   }
 
-  return c.json(
-    buildApiResponse((await serializeRoles()).find((role) => role.id === id)),
-    200,
-  );
+  return c.json(buildApiResponse((await serializeRoles()).find((role) => role.id === id)), 200);
 });
 
 app.delete("/admin/roles/:id", async (c) => {
+  const permissionError = await requirePermission(c, "roles.delete");
+  if (permissionError) {
+    return permissionError;
+  }
+
   const id = c.req.param("id");
   const existingRole = await db.query.adminRole.findFirst({
     where: eq(adminRole.id, id),
@@ -502,10 +545,7 @@ app.delete("/admin/roles/:id", async (c) => {
   }
 
   if (existingRole.isSystem) {
-    return c.json(
-      invalidRequest("Funções do sistema não podem ser removidas."),
-      400,
-    );
+    return c.json(invalidRequest("Funções do sistema não podem ser removidas."), 400);
   }
 
   const [usersInRole] = await db
@@ -514,10 +554,7 @@ app.delete("/admin/roles/:id", async (c) => {
     .where(eq(userTable.role, existingRole.slug));
 
   if ((usersInRole?.value ?? 0) > 0) {
-    return c.json(
-      invalidRequest("Remova essa função dos usuários antes de excluí-la."),
-      400,
-    );
+    return c.json(invalidRequest("Remova essa função dos usuários antes de excluí-la."), 400);
   }
 
   await db.delete(adminRole).where(eq(adminRole.id, id));
@@ -525,6 +562,15 @@ app.delete("/admin/roles/:id", async (c) => {
 });
 
 app.get("/admin/permissions", async (c) => {
+  const permissionError = await requireAnyPermission(c, [
+    "roles.read",
+    "roles.create",
+    "roles.update",
+  ]);
+  if (permissionError) {
+    return permissionError;
+  }
+
   await ensureDefaultRolesAndPermissions();
   const permissions = await db.query.adminPermission.findMany({
     orderBy: (fields, { asc }) => [asc(fields.label)],
@@ -546,14 +592,16 @@ app.get("/admin/permissions", async (c) => {
 });
 
 app.delete("/admin/users/:id", async (c) => {
-  const currentUser = getAdminUser(c);
+  const permissionError = await requirePermission(c, "users.delete");
+  if (permissionError) {
+    return permissionError;
+  }
+
+  const currentUser = c.get("user");
   const userId = c.req.param("id");
 
   if (currentUser?.id === userId) {
-    return c.json(
-      invalidRequest("Você não pode remover sua própria conta."),
-      400,
-    );
+    return c.json(invalidRequest("Você não pode remover sua própria conta."), 400);
   }
 
   const existingUser = await db.query.user.findFirst({
@@ -576,12 +624,7 @@ app.delete("/admin/users/:id", async (c) => {
       await tx.delete(account).where(eq(account.userId, userId));
       await tx
         .delete(userTable)
-        .where(
-          and(
-            eq(userTable.id, userId),
-            eq(userTable.email, existingUser.email),
-          ),
-        );
+        .where(and(eq(userTable.id, userId), eq(userTable.email, existingUser.email)));
     });
   } catch {
     return c.json(

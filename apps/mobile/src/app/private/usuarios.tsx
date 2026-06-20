@@ -12,14 +12,8 @@ import {
 } from "@hugeicons/core-free-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "expo-router";
-import React, { useMemo, useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  TextInput,
-  View,
-} from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, Alert, Pressable, TextInput, View } from "react-native";
 
 import { UserForm } from "@/components/user-form";
 import { AppText } from "@/components/ui/app-text";
@@ -29,14 +23,11 @@ import { HeaderBlock } from "@/components/ui/layout";
 import { ScreenScroll } from "@/components/ui/screen";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Surface } from "@/components/ui/surface";
-import {
-  adminRolesQueryKey,
-  deleteAdminUser,
-  listAdminRoles,
-} from "@/lib/admin";
+import { adminRolesQueryKey, deleteAdminUser, listAdminRoles } from "@/lib/admin";
 import { type ApiAdminRole } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
+import { useCurrentPermissions } from "@/lib/permissions";
 import { useTheme } from "@/hooks/use-theme";
 
 type AdminView = "users" | "roles";
@@ -110,6 +101,7 @@ async function fetchAdminUsers() {
 export default function UsersAdminScreen() {
   const theme = useTheme();
   const queryClient = useQueryClient();
+  const permissions = useCurrentPermissions();
   const [activeView, setActiveView] = useState<AdminView>("users");
   const [query, setQuery] = useState("");
   const [isCreatingUser, setIsCreatingUser] = useState(false);
@@ -128,11 +120,33 @@ export default function UsersAdminScreen() {
   } = useQuery({
     queryKey: adminUsersQueryKey,
     queryFn: fetchAdminUsers,
+    enabled: permissions.canReadUsers,
   });
   const { data: roles = [], isLoading: isLoadingRoles } = useQuery({
     queryKey: adminRolesQueryKey,
     queryFn: listAdminRoles,
+    enabled: permissions.canReadRoles || permissions.canCreateUsers || permissions.canUpdateUsers,
   });
+
+  useEffect(() => {
+    if (permissions.isLoading || permissions.isFetching) {
+      return;
+    }
+
+    if (activeView === "users" && !permissions.canReadUsers) {
+      setActiveView("roles");
+    }
+
+    if (activeView === "roles" && !permissions.canReadRoles) {
+      setActiveView("users");
+    }
+  }, [
+    activeView,
+    permissions.canReadRoles,
+    permissions.canReadUsers,
+    permissions.isFetching,
+    permissions.isLoading,
+  ]);
 
   const roleItems = useMemo(
     () =>
@@ -175,21 +189,12 @@ export default function UsersAdminScreen() {
       queryClient.invalidateQueries({ queryKey: adminRolesQueryKey });
     },
     onError: (mutationError) => {
-      Alert.alert(
-        "Falha ao alterar função",
-        getAdminErrorMessage(mutationError),
-      );
+      Alert.alert("Falha ao alterar função", getAdminErrorMessage(mutationError));
     },
   });
 
   const updateUserMutation = useMutation({
-    mutationFn: async ({
-      userId,
-      data,
-    }: {
-      userId: string;
-      data: UserDraft;
-    }) => {
+    mutationFn: async ({ userId, data }: { userId: string; data: UserDraft }) => {
       const { error } = await authClient.admin.updateUser({
         userId,
         data,
@@ -204,10 +209,7 @@ export default function UsersAdminScreen() {
       queryClient.invalidateQueries({ queryKey: adminUsersQueryKey });
     },
     onError: (mutationError) => {
-      Alert.alert(
-        "Falha ao editar usuário",
-        getAdminErrorMessage(mutationError),
-      );
+      Alert.alert("Falha ao editar usuário", getAdminErrorMessage(mutationError));
     },
   });
 
@@ -218,10 +220,7 @@ export default function UsersAdminScreen() {
       queryClient.invalidateQueries({ queryKey: adminRolesQueryKey });
     },
     onError: (mutationError) => {
-      Alert.alert(
-        "Falha ao remover usuário",
-        getAdminErrorMessage(mutationError),
-      );
+      Alert.alert("Falha ao remover usuário", getAdminErrorMessage(mutationError));
     },
   });
 
@@ -273,14 +272,16 @@ export default function UsersAdminScreen() {
             title="Usuários"
             subtitle="Gerencie contas, funções e permissões do aplicativo"
           />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Criar usuário"
-            onPress={() => setIsCreatingUser(true)}
-            className="h-12 w-12 items-center justify-center rounded-lg bg-app-accent dark:bg-app-accent-dark"
-          >
-            <AppIcon icon={Add01Icon} size={24} color="#17201A" />
-          </Pressable>
+          {permissions.canCreateUsers ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Criar usuário"
+              onPress={() => setIsCreatingUser(true)}
+              className="h-12 w-12 items-center justify-center rounded-lg bg-app-accent dark:bg-app-accent-dark"
+            >
+              <AppIcon icon={Add01Icon} size={24} color="#17201A" />
+            </Pressable>
+          ) : null}
         </View>
 
         <Surface className="flex-row gap-2 p-2">
@@ -289,39 +290,39 @@ export default function UsersAdminScreen() {
               { value: "users", label: "Usuários", icon: UserGroupIcon },
               { value: "roles", label: "Funções", icon: ShieldBanIcon },
             ] as const
-          ).map((item) => {
-            const isActive = activeView === item.value;
+          )
+            .filter((item) =>
+              item.value === "users" ? permissions.canReadUsers : permissions.canReadRoles,
+            )
+            .map((item) => {
+              const isActive = activeView === item.value;
 
-            return (
-              <Pressable
-                key={item.value}
-                accessibilityRole="button"
-                onPress={() => setActiveView(item.value)}
-                className={cn(
-                  "min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-lg",
-                  isActive && "bg-app-accent-soft dark:bg-app-accent-soft-dark",
-                )}
-              >
-                <AppIcon
-                  icon={item.icon}
-                  size={18}
-                  color={isActive ? theme.text : theme.textSecondary}
-                />
-                <AppText className="font-bold">{item.label}</AppText>
-              </Pressable>
-            );
-          })}
+              return (
+                <Pressable
+                  key={item.value}
+                  accessibilityRole="button"
+                  onPress={() => setActiveView(item.value)}
+                  className={cn(
+                    "min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-lg",
+                    isActive && "bg-app-accent-soft dark:bg-app-accent-soft-dark",
+                  )}
+                >
+                  <AppIcon
+                    icon={item.icon}
+                    size={18}
+                    color={isActive ? theme.text : theme.textSecondary}
+                  />
+                  <AppText className="font-bold">{item.label}</AppText>
+                </Pressable>
+              );
+            })}
         </Surface>
       </View>
 
-      {activeView === "users" ? (
+      {activeView === "users" && permissions.canReadUsers ? (
         <Surface className="overflow-hidden">
           <View className="flex-row items-center gap-2 border-b border-app-border px-4 py-3.5 dark:border-app-border-dark">
-            <AppIcon
-              icon={Search01Icon}
-              size={18}
-              color={theme.textSecondary}
-            />
+            <AppIcon icon={Search01Icon} size={18} color={theme.textSecondary} />
             <TextInput
               placeholder="Buscar usuário..."
               placeholderTextColor={theme.textSecondary}
@@ -339,11 +340,7 @@ export default function UsersAdminScreen() {
               {isFetching ? (
                 <ActivityIndicator size="small" color={theme.textSecondary} />
               ) : (
-                <AppIcon
-                  icon={RefreshIcon}
-                  size={20}
-                  color={theme.textSecondary}
-                />
+                <AppIcon icon={RefreshIcon} size={20} color={theme.textSecondary} />
               )}
             </Pressable>
           </View>
@@ -358,8 +355,7 @@ export default function UsersAdminScreen() {
                 {getAdminErrorMessage(error)}
               </AppText>
               <AppText tone="muted">
-                Apenas usuários com permissão administrativa podem listar
-                contas.
+                Apenas usuários com permissão administrativa podem listar contas.
               </AppText>
             </View>
           ) : filteredUsers.length === 0 ? (
@@ -371,12 +367,9 @@ export default function UsersAdminScreen() {
               const primaryRole = getPrimaryRole(user.role);
               const isEditingUser = editingUserId === user.id;
               const isMutatingUser =
-                (setRoleMutation.variables?.userId === user.id &&
-                  setRoleMutation.isPending) ||
-                (deleteUserMutation.variables === user.id &&
-                  deleteUserMutation.isPending) ||
-                (updateUserMutation.variables?.userId === user.id &&
-                  updateUserMutation.isPending);
+                (setRoleMutation.variables?.userId === user.id && setRoleMutation.isPending) ||
+                (deleteUserMutation.variables === user.id && deleteUserMutation.isPending) ||
+                (updateUserMutation.variables?.userId === user.id && updateUserMutation.isPending);
 
               return (
                 <View
@@ -395,19 +388,11 @@ export default function UsersAdminScreen() {
                     </View>
 
                     <View className="min-w-0 flex-1">
-                      <AppText
-                        className="font-bold"
-                        numberOfLines={1}
-                        selectable
-                      >
+                      <AppText className="font-bold" numberOfLines={1} selectable>
                         {user.name || "Sem nome"}
                       </AppText>
                       <View className="flex-row items-center gap-1.5">
-                        <AppIcon
-                          icon={Mail01Icon}
-                          size={14}
-                          color={theme.textSecondary}
-                        />
+                        <AppIcon icon={Mail01Icon} size={14} color={theme.textSecondary} />
                         <AppText tone="muted" numberOfLines={1} selectable>
                           {user.email}
                         </AppText>
@@ -472,14 +457,8 @@ export default function UsersAdminScreen() {
                           }
                           disabled={updateUserMutation.isPending}
                         >
-                          <AppIcon
-                            icon={Tick02Icon}
-                            size={18}
-                            color="#17201A"
-                          />
-                          <AppText className="font-bold text-app-text">
-                            Salvar
-                          </AppText>
+                          <AppIcon icon={Tick02Icon} size={18} color="#17201A" />
+                          <AppText className="font-bold text-app-text">Salvar</AppText>
                         </Pressable>
                         <Pressable
                           className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-app-background dark:bg-app-background-dark"
@@ -492,38 +471,47 @@ export default function UsersAdminScreen() {
                     </View>
                   ) : (
                     <View className="gap-3 pl-14">
-                      <SelectField
-                        label="Função"
-                        value={primaryRole}
-                        onValueChange={(role) =>
-                          setRoleMutation.mutate({
-                            userId: user.id,
-                            role,
-                          })
-                        }
-                        items={roleItems}
-                      />
-                      <View className="flex-row gap-2">
-                        <Pressable
-                          className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-app-background dark:bg-app-background-dark"
-                          onPress={() => startEditingUser(user)}
-                        >
-                          <AppIcon icon={Edit02Icon} size={18} />
-                          <AppText className="font-bold">Editar</AppText>
-                        </Pressable>
-                        <Pressable
-                          className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-app-background dark:bg-app-background-dark"
-                          onPress={() => confirmDeleteUser(user)}
-                        >
-                          <AppIcon
-                            icon={Delete02Icon}
-                            size={18}
-                            color="#E11D48"
-                          />
-                          <AppText className="font-bold text-app-danger dark:text-app-danger-dark">
-                            Remover
+                      {permissions.canUpdateUsers ? (
+                        <SelectField
+                          label="Função"
+                          value={primaryRole}
+                          onValueChange={(role) =>
+                            setRoleMutation.mutate({
+                              userId: user.id,
+                              role,
+                            })
+                          }
+                          items={roleItems}
+                        />
+                      ) : (
+                        <View className="gap-1">
+                          <AppText variant="smallBold" tone="muted">
+                            Função
                           </AppText>
-                        </Pressable>
+                          <AppText className="font-bold">{getRoleLabel(roles, user.role)}</AppText>
+                        </View>
+                      )}
+                      <View className="flex-row gap-2">
+                        {permissions.canUpdateUsers ? (
+                          <Pressable
+                            className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-app-background dark:bg-app-background-dark"
+                            onPress={() => startEditingUser(user)}
+                          >
+                            <AppIcon icon={Edit02Icon} size={18} />
+                            <AppText className="font-bold">Editar</AppText>
+                          </Pressable>
+                        ) : null}
+                        {permissions.canDeleteUsers ? (
+                          <Pressable
+                            className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-app-background dark:bg-app-background-dark"
+                            onPress={() => confirmDeleteUser(user)}
+                          >
+                            <AppIcon icon={Delete02Icon} size={18} color="#E11D48" />
+                            <AppText className="font-bold text-app-danger dark:text-app-danger-dark">
+                              Remover
+                            </AppText>
+                          </Pressable>
+                        ) : null}
                       </View>
                       {isMutatingUser ? (
                         <AppText variant="small" tone="muted">
@@ -537,19 +525,21 @@ export default function UsersAdminScreen() {
             })
           )}
         </Surface>
-      ) : (
+      ) : permissions.canReadRoles ? (
         <View className="gap-3">
           <View className="flex-row items-center justify-between gap-3">
             <SectionHeader icon={ShieldBanIcon} label="Funções" />
-            <Link href="/private/funcao/nova" asChild>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Criar função"
-                className="h-10 w-10 items-center justify-center rounded-lg bg-app-accent dark:bg-app-accent-dark"
-              >
-                <AppIcon icon={Add01Icon} size={20} color="#17201A" />
-              </Pressable>
-            </Link>
+            {permissions.canCreateRoles ? (
+              <Link href="/private/funcao/nova" asChild>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Criar função"
+                  className="h-10 w-10 items-center justify-center rounded-lg bg-app-accent dark:bg-app-accent-dark"
+                >
+                  <AppIcon icon={Add01Icon} size={20} color="#17201A" />
+                </Pressable>
+              </Link>
+            ) : null}
           </View>
 
           {isLoadingRoles ? (
@@ -568,18 +558,14 @@ export default function UsersAdminScreen() {
                     <View className="flex-row items-start justify-between gap-3">
                       <View className="min-w-0 flex-1 gap-1">
                         <View className="flex-row flex-wrap items-center gap-2">
-                          <AppText className="text-lg font-bold leading-6">
-                            {role.name}
-                          </AppText>
+                          <AppText className="text-lg font-bold leading-6">{role.name}</AppText>
                           {role.isSystem ? (
                             <View className="rounded-md bg-app-accent-soft px-2 py-0.5 dark:bg-app-accent-soft-dark">
                               <AppText variant="smallBold">Sistema</AppText>
                             </View>
                           ) : null}
                         </View>
-                        <AppText tone="muted">
-                          {role.description || role.slug}
-                        </AppText>
+                        <AppText tone="muted">{role.description || role.slug}</AppText>
                       </View>
                       <View className="rounded-lg bg-app-accent-soft px-2.5 py-1.5 dark:bg-app-accent-soft-dark">
                         <AppText variant="smallBold">{role.userCount}</AppText>
@@ -591,6 +577,12 @@ export default function UsersAdminScreen() {
             ))
           )}
         </View>
+      ) : (
+        <Surface className="p-4">
+          <AppText tone="muted">
+            Você não tem permissões para gerenciar usuários ou funções.
+          </AppText>
+        </Surface>
       )}
     </ScreenScroll>
   );
