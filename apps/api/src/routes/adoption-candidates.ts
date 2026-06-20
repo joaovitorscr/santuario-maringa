@@ -11,11 +11,18 @@ import {
   createApiResponseSchema,
   jsonResponse,
 } from "@/contracts/base";
+import { hasPermission } from "@/lib/app-permissions";
 import { desc, eq } from "drizzle-orm";
 import { createSchemaFactory } from "drizzle-zod";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
-const app = new OpenAPIHono();
+type AdoptionCandidateEnv = {
+  Variables: {
+    user: { role?: string | null } | null;
+  };
+};
+
+const app = new OpenAPIHono<AdoptionCandidateEnv>();
 const { createInsertSchema } = createSchemaFactory({ zodInstance: z });
 
 const IsoDateTimeSchema = z.iso.datetime();
@@ -155,6 +162,7 @@ const createAdoptionCandidateRoute = createRoute({
   responses: {
     201: jsonResponse(AdoptionCandidateResponseSchema, "Created adoption candidate"),
     401: jsonResponse(UnauthorizedErrorResponseSchema, "Unauthorized"),
+    403: jsonResponse(UnauthorizedErrorResponseSchema, "Forbidden"),
     400: jsonResponse(ValidationErrorResponseSchema, "Invalid request"),
     500: jsonResponse(InternalServerErrorResponseSchema, "Unexpected server error"),
   },
@@ -179,6 +187,7 @@ const updateAdoptionCandidateRoute = createRoute({
   responses: {
     200: jsonResponse(AdoptionCandidateResponseSchema, "Updated adoption candidate"),
     401: jsonResponse(UnauthorizedErrorResponseSchema, "Unauthorized"),
+    403: jsonResponse(UnauthorizedErrorResponseSchema, "Forbidden"),
     404: jsonResponse(NotFoundErrorResponseSchema, "Adoption candidate not found"),
     400: jsonResponse(ValidationErrorResponseSchema, "Invalid request"),
     500: jsonResponse(InternalServerErrorResponseSchema, "Unexpected server error"),
@@ -198,6 +207,7 @@ const deleteAdoptionCandidateRoute = createRoute({
       description: "Adoption candidate deleted",
     },
     401: jsonResponse(UnauthorizedErrorResponseSchema, "Unauthorized"),
+    403: jsonResponse(UnauthorizedErrorResponseSchema, "Forbidden"),
     404: jsonResponse(NotFoundErrorResponseSchema, "Adoption candidate not found"),
     500: jsonResponse(InternalServerErrorResponseSchema, "Unexpected server error"),
   },
@@ -219,6 +229,17 @@ const serializeAdoptionCandidate = (record: {
     updatedAt: record.updatedAt.toISOString(),
   };
 };
+
+async function requireAdoptionCandidatesPermission(role?: string | null) {
+  if (await hasPermission(role, "adoption_candidates.manage")) {
+    return null;
+  }
+
+  return buildApiErrorResponse({
+    code: "FORBIDDEN",
+    message: "Você não tem permissão para executar esta ação.",
+  });
+}
 
 app.openapi(listAdoptionCandidatesRoute, async (c) => {
   const records = await db
@@ -250,6 +271,12 @@ app.openapi(getAdoptionCandidateRoute, async (c) => {
 
 app.openapi(createAdoptionCandidateRoute, async (c) => {
   const payload = c.req.valid("json").data;
+  const user = c.get("user");
+
+  const permissionError = await requireAdoptionCandidatesPermission(user?.role);
+  if (permissionError) {
+    return c.json(permissionError, 403);
+  }
 
   const now = new Date();
   const [record] = await db
@@ -272,6 +299,12 @@ app.openapi(createAdoptionCandidateRoute, async (c) => {
 app.openapi(updateAdoptionCandidateRoute, async (c) => {
   const { id } = c.req.valid("param");
   const payload = c.req.valid("json").data;
+  const user = c.get("user");
+
+  const permissionError = await requireAdoptionCandidatesPermission(user?.role);
+  if (permissionError) {
+    return c.json(permissionError, 403);
+  }
 
   const [record] = await db
     .update(adoptionCandidate)
@@ -297,6 +330,13 @@ app.openapi(updateAdoptionCandidateRoute, async (c) => {
 
 app.openapi(deleteAdoptionCandidateRoute, async (c) => {
   const { id } = c.req.valid("param");
+  const user = c.get("user");
+
+  const permissionError = await requireAdoptionCandidatesPermission(user?.role);
+  if (permissionError) {
+    return c.json(permissionError, 403);
+  }
+
   const [record] = await db
     .delete(adoptionCandidate)
     .where(eq(adoptionCandidate.id, id))

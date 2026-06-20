@@ -23,22 +23,21 @@ import { HeaderBlock } from "@/components/ui/layout";
 import { ScreenScroll } from "@/components/ui/screen";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Surface } from "@/components/ui/surface";
-import { adminRolesQueryKey, deleteAdminUser, listAdminRoles } from "@/lib/admin";
-import { type ApiAdminRole } from "@/lib/api";
-import { authClient } from "@/lib/auth-client";
+import {
+  adminRolesQueryKey,
+  deleteAdminUser,
+  listAdminRoles,
+  listAdminUsers,
+  updateAdminUser,
+} from "@/lib/admin";
+import { type ApiAdminRole, type ApiAdminUser } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useCurrentPermissions } from "@/lib/permissions";
 import { useTheme } from "@/hooks/use-theme";
 
 type AdminView = "users" | "roles";
 
-type AdminUser = {
-  id: string;
-  name: string;
-  email: string;
-  role?: string;
-  banned?: boolean | null;
-};
+type AdminUser = ApiAdminUser;
 
 type UserDraft = {
   name: string;
@@ -72,30 +71,14 @@ function getAdminErrorMessage(error: unknown) {
   return "Não foi possível concluir a ação administrativa.";
 }
 
-function getPrimaryRole(role?: string) {
+function getPrimaryRole(role?: string | null) {
   return role?.split(",")[0]?.trim() || "volunteer";
 }
 
-function getRoleLabel(roles: ApiAdminRole[], role?: string) {
+function getRoleLabel(roles: ApiAdminRole[], role?: string | null) {
   const primaryRole = getPrimaryRole(role);
 
   return roles.find((item) => item.slug === primaryRole)?.name ?? primaryRole;
-}
-
-async function fetchAdminUsers() {
-  const { data, error } = await authClient.admin.listUsers({
-    query: {
-      limit: 100,
-      sortBy: "name",
-      sortDirection: "asc",
-    },
-  });
-
-  if (error) {
-    throw new Error(getAdminErrorMessage(error));
-  }
-
-  return (data?.users ?? []) as AdminUser[];
 }
 
 export default function UsersAdminScreen() {
@@ -119,7 +102,7 @@ export default function UsersAdminScreen() {
     isFetching,
   } = useQuery({
     queryKey: adminUsersQueryKey,
-    queryFn: fetchAdminUsers,
+    queryFn: listAdminUsers,
     enabled: permissions.canReadUsers,
   });
   const { data: roles = [], isLoading: isLoadingRoles } = useQuery({
@@ -175,14 +158,7 @@ export default function UsersAdminScreen() {
 
   const setRoleMutation = useMutation({
     mutationFn: async ({ userId, role }: { userId: string; role: string }) => {
-      const { error } = await authClient.admin.setRole({
-        userId,
-        role: role as never,
-      });
-
-      if (error) {
-        throw new Error(getAdminErrorMessage(error));
-      }
+      await updateAdminUser(userId, { role });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminUsersQueryKey });
@@ -195,14 +171,7 @@ export default function UsersAdminScreen() {
 
   const updateUserMutation = useMutation({
     mutationFn: async ({ userId, data }: { userId: string; data: UserDraft }) => {
-      const { error } = await authClient.admin.updateUser({
-        userId,
-        data,
-      } as never);
-
-      if (error) {
-        throw new Error(getAdminErrorMessage(error));
-      }
+      await updateAdminUser(userId, data);
     },
     onSuccess: () => {
       setEditingUserId(null);

@@ -13,10 +13,17 @@ import {
   createApiResponseSchema,
   jsonResponse,
 } from "@/contracts/base";
+import { hasPermission } from "@/lib/app-permissions";
 import { desc, eq } from "drizzle-orm";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
-const app = new OpenAPIHono();
+type AdoptionEnv = {
+  Variables: {
+    user: { role?: string | null } | null;
+  };
+};
+
+const app = new OpenAPIHono<AdoptionEnv>();
 
 const IsoDateTimeSchema = z.iso.datetime();
 
@@ -102,6 +109,7 @@ const createAdoptionRoute = createRoute({
   responses: {
     201: jsonResponse(AdoptionResponseSchema, "Created adoption"),
     401: jsonResponse(UnauthorizedErrorResponseSchema, "Unauthorized"),
+    403: jsonResponse(UnauthorizedErrorResponseSchema, "Forbidden"),
     404: jsonResponse(NotFoundErrorResponseSchema, "Candidate or cat not found"),
     400: jsonResponse(ValidationErrorResponseSchema, "Invalid request"),
     500: jsonResponse(InternalServerErrorResponseSchema, "Unexpected server error"),
@@ -147,6 +155,17 @@ async function getAdoptionById(id: string) {
   });
 }
 
+async function requireAdoptionsPermission(role?: string | null) {
+  if (await hasPermission(role, "adoptions.manage")) {
+    return null;
+  }
+
+  return buildApiErrorResponse({
+    code: "FORBIDDEN",
+    message: "Você não tem permissão para executar esta ação.",
+  });
+}
+
 app.openapi(listAdoptionsRoute, async (c) => {
   const records = await db.query.adoption.findMany({
     orderBy: [desc(adoption.adoptionDate)],
@@ -162,6 +181,12 @@ app.openapi(listAdoptionsRoute, async (c) => {
 app.openapi(createAdoptionRoute, async (c) => {
   const payload = c.req.valid("json").data;
   const adoptionDate = new Date(payload.adoptionDate);
+  const user = c.get("user");
+
+  const permissionError = await requireAdoptionsPermission(user?.role);
+  if (permissionError) {
+    return c.json(permissionError, 403);
+  }
 
   const [candidateRecord, catRecord] = await Promise.all([
     db.query.adoptionCandidate.findFirst({

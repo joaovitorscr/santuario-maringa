@@ -11,10 +11,17 @@ import {
   createApiResponseSchema,
   jsonResponse,
 } from "@/contracts/base";
+import { hasPermission } from "@/lib/app-permissions";
 import { desc, eq } from "drizzle-orm";
 import { OpenAPIHono, createRoute, z } from "@hono/zod-openapi";
 
-const app = new OpenAPIHono();
+type CatEnv = {
+  Variables: {
+    user: { id: string; name: string; role?: string | null } | null;
+  };
+};
+
+const app = new OpenAPIHono<CatEnv>();
 
 const AdoptionStatusSchema = z
   .enum(["Adopted", "Adoption Process", "Available", "Not Available"])
@@ -168,6 +175,7 @@ const createCatRoute = createRoute({
   responses: {
     201: jsonResponse(CatResponseSchema, "Created cat"),
     401: jsonResponse(UnauthorizedErrorResponseSchema, "Unauthorized"),
+    403: jsonResponse(UnauthorizedErrorResponseSchema, "Forbidden"),
     400: jsonResponse(ValidationErrorResponseSchema, "Invalid request"),
     500: jsonResponse(InternalServerErrorResponseSchema, "Unexpected server error"),
   },
@@ -192,6 +200,7 @@ const updateCatRoute = createRoute({
   responses: {
     200: jsonResponse(CatResponseSchema, "Updated cat"),
     401: jsonResponse(UnauthorizedErrorResponseSchema, "Unauthorized"),
+    403: jsonResponse(UnauthorizedErrorResponseSchema, "Forbidden"),
     404: jsonResponse(NotFoundErrorResponseSchema, "Cat not found"),
     400: jsonResponse(ValidationErrorResponseSchema, "Invalid request"),
     500: jsonResponse(InternalServerErrorResponseSchema, "Unexpected server error"),
@@ -211,6 +220,7 @@ const deleteCatRoute = createRoute({
       description: "Cat deleted",
     },
     401: jsonResponse(UnauthorizedErrorResponseSchema, "Unauthorized"),
+    403: jsonResponse(UnauthorizedErrorResponseSchema, "Forbidden"),
     404: jsonResponse(NotFoundErrorResponseSchema, "Cat not found"),
     500: jsonResponse(InternalServerErrorResponseSchema, "Unexpected server error"),
   },
@@ -218,13 +228,9 @@ const deleteCatRoute = createRoute({
 
 const toIsoString = (value: Date | null | undefined) => value?.toISOString() ?? null;
 
-const serializeCat = (
-  record: Awaited<ReturnType<typeof getCatById>> extends infer TResult
-    ? TResult extends null
-      ? never
-      : TResult
-    : never,
-) => {
+type CatRecord = NonNullable<Awaited<ReturnType<typeof getCatById>>>;
+
+const serializeCat = (record: CatRecord) => {
   return {
     ...record,
     entryDate: record.entryDate.toISOString(),
@@ -257,6 +263,17 @@ async function getCatById(id: string) {
       furType: true,
       createdByUser: true,
     },
+  });
+}
+
+async function requireCatsPermission(role?: string | null) {
+  if (await hasPermission(role, "cats.manage")) {
+    return null;
+  }
+
+  return buildApiErrorResponse({
+    code: "FORBIDDEN",
+    message: "Você não tem permissão para executar esta ação.",
   });
 }
 
@@ -301,6 +318,11 @@ app.openapi(createCatRoute, async (c) => {
       }),
       401,
     );
+  }
+
+  const permissionError = await requireCatsPermission(user.role);
+  if (permissionError) {
+    return c.json(permissionError, 403);
   }
 
   const now = new Date();
@@ -352,6 +374,12 @@ app.openapi(createCatRoute, async (c) => {
 app.openapi(updateCatRoute, async (c) => {
   const { id } = c.req.valid("param");
   const payload = c.req.valid("json").data;
+  const user = c.get("user");
+
+  const permissionError = await requireCatsPermission(user?.role);
+  if (permissionError) {
+    return c.json(permissionError, 403);
+  }
 
   const [updatedRecord] = await db
     .update(cat)
@@ -402,6 +430,13 @@ app.openapi(updateCatRoute, async (c) => {
 
 app.openapi(deleteCatRoute, async (c) => {
   const { id } = c.req.valid("param");
+  const user = c.get("user");
+
+  const permissionError = await requireCatsPermission(user?.role);
+  if (permissionError) {
+    return c.json(permissionError, 403);
+  }
+
   const [deletedRecord] = await db.delete(cat).where(eq(cat.id, id)).returning({ id: cat.id });
 
   if (!deletedRecord) {

@@ -35,10 +35,14 @@ function hasAnyPermission(permissionSet: ReadonlySet<string>, permissions: AppPe
 export function useCurrentPermissions() {
   const { data: session } = authClient.useSession();
   const query = useQuery({
-    queryKey: currentPermissionsQueryKey,
+    queryKey: [...currentPermissionsQueryKey, session?.user.id, session?.user.role] as const,
     queryFn: fetchCurrentPermissions,
     enabled: Boolean(session?.user),
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchInterval: 5_000,
+    refetchOnMount: "always",
+    refetchOnReconnect: "always",
+    refetchOnWindowFocus: "always",
   });
   const permissionSet = new Set(query.data?.permissions ?? []);
   const has = (permission: AppPermission) => permissionSet.has(permission);

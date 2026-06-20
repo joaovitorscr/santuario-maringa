@@ -12,7 +12,7 @@ import { AppIcon } from "@/components/ui/icon";
 import { HeaderBlock } from "@/components/ui/layout";
 import { SectionHeader } from "@/components/ui/section-header";
 import { Surface } from "@/components/ui/surface";
-import { authClient } from "@/lib/auth-client";
+import { createAdminUser } from "@/lib/admin";
 
 type UserFormProps = {
   onBack: () => void;
@@ -73,23 +73,18 @@ export function UserForm({ onBack, onSuccess, roles }: UserFormProps) {
     mode: "onChange",
   });
 
-  const selectedRole = roles.find(
-    (role) => role.value === userForm.watch("role"),
-  );
+  const selectedRole = roles.find((role) => role.value === userForm.watch("role"));
 
   const handleSubmit = async (values: UserFormValues) => {
-    const { error } = await authClient.admin.createUser({
-      name: values.name,
-      email: values.email,
-      password: values.password,
-      role: values.role as never,
-      data: {
+    try {
+      await createAdminUser({
+        name: values.name,
+        email: values.email,
         username: values.username,
-        displayUsername: values.username,
-      },
-    });
-
-    if (error) {
+        password: values.password,
+        role: values.role,
+      });
+    } catch (error) {
       Alert.alert("Falha ao criar usuário", getAdminErrorMessage(error));
       return;
     }
@@ -102,11 +97,7 @@ export function UserForm({ onBack, onSuccess, roles }: UserFormProps) {
   return (
     <>
       <View className="flex-row items-start gap-2">
-        <Pressable
-          className="w-9 items-center pt-1"
-          onPress={onBack}
-          hitSlop={8}
-        >
+        <Pressable className="w-9 items-center pt-1" onPress={onBack} hitSlop={8}>
           <AppIcon icon={ArrowLeft01Icon} size={24} />
         </Pressable>
         <HeaderBlock
@@ -164,14 +155,8 @@ export function UserForm({ onBack, onSuccess, roles }: UserFormProps) {
               autoCorrect={false}
               textContentType="newPassword"
             />
-            <FormSelectField<UserFormValues, "role">
-              name="role"
-              label="Função"
-              items={roleItems}
-            />
-            {selectedRole ? (
-              <AppText tone="muted">{selectedRole.description}</AppText>
-            ) : null}
+            <FormSelectField<UserFormValues, "role"> name="role" label="Função" items={roleItems} />
+            {selectedRole ? <AppText tone="muted">{selectedRole.description}</AppText> : null}
           </View>
         </Form>
       </Surface>

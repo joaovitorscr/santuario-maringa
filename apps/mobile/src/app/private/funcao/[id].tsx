@@ -28,21 +28,16 @@ import {
   deleteAdminRole,
   listAdminPermissions,
   listAdminRoles,
+  listAdminUsers,
   updateAdminRole,
+  updateAdminUser,
   type AdminRolePayload,
 } from "@/lib/admin";
-import { type ApiAdminPermission, type ApiAdminRole } from "@/lib/api";
-import { authClient } from "@/lib/auth-client";
+import { type ApiAdminPermission, type ApiAdminRole, type ApiAdminUser } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useCurrentPermissions } from "@/lib/permissions";
 
-type AdminUser = {
-  id: string;
-  name: string;
-  email: string;
-  role?: string;
-  banned?: boolean | null;
-};
+type AdminUser = ApiAdminUser;
 
 const adminUsersQueryKey = ["admin", "users"] as const;
 
@@ -76,7 +71,7 @@ function getAdminErrorMessage(error: unknown) {
   return "Não foi possível concluir a ação administrativa.";
 }
 
-function getPrimaryRole(role?: string) {
+function getPrimaryRole(role?: string | null) {
   return role?.split(",")[0]?.trim() || "volunteer";
 }
 
@@ -99,22 +94,6 @@ function getInitials(value: string) {
 
 function getPermissionCategory(permissionKey: string) {
   return permissionKey.split(".")[0]?.trim() || "app";
-}
-
-async function fetchAdminUsers() {
-  const { data, error } = await authClient.admin.listUsers({
-    query: {
-      limit: 200,
-      sortBy: "name",
-      sortDirection: "asc",
-    },
-  });
-
-  if (error) {
-    throw new Error(getAdminErrorMessage(error));
-  }
-
-  return (data?.users ?? []) as AdminUser[];
 }
 
 function PermissionToggle({
@@ -179,7 +158,7 @@ export default function RoleDetailScreen() {
   });
   const { data: users = [], isLoading: isLoadingUsers } = useQuery({
     queryKey: adminUsersQueryKey,
-    queryFn: fetchAdminUsers,
+    queryFn: listAdminUsers,
     enabled: permissionsAccess.canReadUsers,
   });
   const canEditRole = isCreatingRole
@@ -292,14 +271,7 @@ export default function RoleDetailScreen() {
 
   const setRoleMutation = useMutation({
     mutationFn: async ({ userId, nextRole }: { userId: string; nextRole: string }) => {
-      const { error } = await authClient.admin.setRole({
-        userId,
-        role: nextRole as never,
-      });
-
-      if (error) {
-        throw new Error(getAdminErrorMessage(error));
-      }
+      await updateAdminUser(userId, { role: nextRole });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminUsersQueryKey });
