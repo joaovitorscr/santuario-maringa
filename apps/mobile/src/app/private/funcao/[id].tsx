@@ -34,6 +34,7 @@ import {
 import { type ApiAdminPermission, type ApiAdminRole } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/cn";
+import { useCurrentPermissions } from "@/lib/permissions";
 
 type AdminUser = {
   id: string;
@@ -119,16 +120,19 @@ async function fetchAdminUsers() {
 function PermissionToggle({
   permission,
   enabled,
+  disabled,
   onToggle,
 }: {
   permission: ApiAdminPermission;
   enabled: boolean;
+  disabled?: boolean;
   onToggle: () => void;
 }) {
   return (
     <Pressable
       accessibilityRole="checkbox"
       accessibilityState={{ checked: enabled }}
+      disabled={disabled}
       onPress={onToggle}
       className="min-h-[48px] flex-row items-center gap-3 rounded-lg bg-app-background px-3 dark:bg-app-background-dark"
     >
@@ -140,9 +144,7 @@ function PermissionToggle({
             : "border-app-border dark:border-app-border-dark",
         )}
       >
-        {enabled ? (
-          <AppIcon icon={Tick02Icon} size={14} color="#17201A" />
-        ) : null}
+        {enabled ? <AppIcon icon={Tick02Icon} size={14} color="#17201A" /> : null}
       </View>
       <View className="min-w-0 flex-1">
         <AppText className="font-bold" numberOfLines={1}>
@@ -157,6 +159,7 @@ function PermissionToggle({
 }
 
 export default function RoleDetailScreen() {
+  const permissionsAccess = useCurrentPermissions();
   const params = useLocalSearchParams<{ id?: string }>();
   const roleId = Array.isArray(params.id) ? params.id[0] : params.id;
   const isCreatingRole = roleId === "nova";
@@ -167,15 +170,21 @@ export default function RoleDetailScreen() {
   const { data: roles = [], isLoading: isLoadingRoles } = useQuery({
     queryKey: adminRolesQueryKey,
     queryFn: listAdminRoles,
+    enabled: permissionsAccess.canReadRoles,
   });
   const { data: permissions = [], isLoading: isLoadingPermissions } = useQuery({
     queryKey: adminPermissionsQueryKey,
     queryFn: listAdminPermissions,
+    enabled: permissionsAccess.canCreateRoles || permissionsAccess.canUpdateRoles,
   });
   const { data: users = [], isLoading: isLoadingUsers } = useQuery({
     queryKey: adminUsersQueryKey,
     queryFn: fetchAdminUsers,
+    enabled: permissionsAccess.canReadUsers,
   });
+  const canEditRole = isCreatingRole
+    ? permissionsAccess.canCreateRoles
+    : permissionsAccess.canUpdateRoles;
 
   const role = roles.find((item) => item.id === roleId);
   const currentRoleSlug = isCreatingRole ? undefined : role?.slug;
@@ -188,10 +197,7 @@ export default function RoleDetailScreen() {
     [currentRoleSlug, users],
   );
   const fallbackRole = useMemo(() => {
-    if (
-      currentRoleSlug !== "volunteer" &&
-      roles.some((item) => item.slug === "volunteer")
-    ) {
+    if (currentRoleSlug !== "volunteer" && roles.some((item) => item.slug === "volunteer")) {
       return "volunteer";
     }
 
@@ -209,12 +215,24 @@ export default function RoleDetailScreen() {
       .map(([category, items]) => ({
         category,
         label: permissionCategoryLabels[category] ?? category,
-        permissions: items.sort((left, right) =>
-          left.label.localeCompare(right.label),
-        ),
+        permissions: items.toSorted((left, right) => left.label.localeCompare(right.label)),
       }))
-      .sort((left, right) => left.label.localeCompare(right.label));
+      .toSorted((left, right) => left.label.localeCompare(right.label));
   }, [permissions]);
+
+  useEffect(() => {
+    if (
+      (!permissionsAccess.isLoading && !permissionsAccess.canReadRoles) ||
+      (isCreatingRole && !permissionsAccess.isLoading && !permissionsAccess.canCreateRoles)
+    ) {
+      router.replace("/private/usuarios");
+    }
+  }, [
+    isCreatingRole,
+    permissionsAccess.canCreateRoles,
+    permissionsAccess.canReadRoles,
+    permissionsAccess.isLoading,
+  ]);
 
   useEffect(() => {
     if (isCreatingRole) {
@@ -251,10 +269,7 @@ export default function RoleDetailScreen() {
       }
     },
     onError: (mutationError) => {
-      Alert.alert(
-        "Falha ao salvar função",
-        getAdminErrorMessage(mutationError),
-      );
+      Alert.alert("Falha ao salvar função", getAdminErrorMessage(mutationError));
     },
   });
 
@@ -271,21 +286,12 @@ export default function RoleDetailScreen() {
       router.back();
     },
     onError: (mutationError) => {
-      Alert.alert(
-        "Falha ao remover função",
-        getAdminErrorMessage(mutationError),
-      );
+      Alert.alert("Falha ao remover função", getAdminErrorMessage(mutationError));
     },
   });
 
   const setRoleMutation = useMutation({
-    mutationFn: async ({
-      userId,
-      nextRole,
-    }: {
-      userId: string;
-      nextRole: string;
-    }) => {
+    mutationFn: async ({ userId, nextRole }: { userId: string; nextRole: string }) => {
       const { error } = await authClient.admin.setRole({
         userId,
         role: nextRole as never,
@@ -300,14 +306,15 @@ export default function RoleDetailScreen() {
       queryClient.invalidateQueries({ queryKey: adminRolesQueryKey });
     },
     onError: (mutationError) => {
-      Alert.alert(
-        "Falha ao alterar membro",
-        getAdminErrorMessage(mutationError),
-      );
+      Alert.alert("Falha ao alterar membro", getAdminErrorMessage(mutationError));
     },
   });
 
   const toggleDraftPermission = (permissionKey: string) => {
+    if (!canEditRole) {
+      return;
+    }
+
     setRoleDraft((current) => ({
       ...current,
       permissionKeys: current.permissionKeys.includes(permissionKey)
@@ -344,10 +351,7 @@ export default function RoleDetailScreen() {
 
   const removeUserFromRole = (user: AdminUser) => {
     if (currentRoleSlug === "admin" && memberUsers.length <= 1) {
-      Alert.alert(
-        "Ação bloqueada",
-        "Mantenha pelo menos um administrador ativo.",
-      );
+      Alert.alert("Ação bloqueada", "Mantenha pelo menos um administrador ativo.");
       return;
     }
 
@@ -357,17 +361,14 @@ export default function RoleDetailScreen() {
     });
   };
 
-  const isLoading = isLoadingRoles || isLoadingPermissions || isLoadingUsers;
+  const isLoading =
+    isLoadingRoles || isLoadingPermissions || isLoadingUsers || permissionsAccess.isLoading;
   const title = isCreatingRole ? "Nova função" : role?.name || "Função";
 
   return (
     <ScreenScroll contentClassName="gap-4 pb-28 pt-3">
       <View className="flex-row items-start gap-2">
-        <Pressable
-          className="w-9 items-center pt-1"
-          onPress={() => router.back()}
-          hitSlop={8}
-        >
+        <Pressable className="w-9 items-center pt-1" onPress={() => router.back()} hitSlop={8}>
           <AppIcon icon={ArrowLeft01Icon} size={24} />
         </Pressable>
         <HeaderBlock
@@ -385,9 +386,7 @@ export default function RoleDetailScreen() {
       ) : !isCreatingRole && !role ? (
         <Surface className="gap-2 p-4">
           <AppText className="font-bold">Função não encontrada</AppText>
-          <AppText tone="muted">
-            Volte para a lista e selecione outra função.
-          </AppText>
+          <AppText tone="muted">Volte para a lista e selecione outra função.</AppText>
         </Surface>
       ) : (
         <>
@@ -401,27 +400,46 @@ export default function RoleDetailScreen() {
               ) : null}
             </View>
 
-            <TextField
-              label="Nome"
-              value={roleDraft.name}
-              onChangeText={(value) =>
-                setRoleDraft((current) => ({
-                  ...current,
-                  name: value,
-                }))
-              }
-            />
-            <TextField
-              label="Descrição"
-              value={roleDraft.description ?? ""}
-              onChangeText={(value) =>
-                setRoleDraft((current) => ({
-                  ...current,
-                  description: value,
-                }))
-              }
-              multiline
-            />
+            {canEditRole ? (
+              <>
+                <TextField
+                  label="Nome"
+                  value={roleDraft.name}
+                  onChangeText={(value) =>
+                    setRoleDraft((current) => ({
+                      ...current,
+                      name: value,
+                    }))
+                  }
+                />
+                <TextField
+                  label="Descrição"
+                  value={roleDraft.description ?? ""}
+                  onChangeText={(value) =>
+                    setRoleDraft((current) => ({
+                      ...current,
+                      description: value,
+                    }))
+                  }
+                  multiline
+                />
+              </>
+            ) : (
+              <View className="gap-3">
+                <View className="gap-1">
+                  <AppText variant="smallBold" tone="muted">
+                    Nome
+                  </AppText>
+                  <AppText className="font-bold">{roleDraft.name}</AppText>
+                </View>
+                <View className="gap-1">
+                  <AppText variant="smallBold" tone="muted">
+                    Descrição
+                  </AppText>
+                  <AppText>{roleDraft.description || "Sem descrição"}</AppText>
+                </View>
+              </View>
+            )}
           </Surface>
 
           <Surface className="gap-4 p-4">
@@ -435,18 +453,15 @@ export default function RoleDetailScreen() {
                     <View className="flex-row items-center justify-between gap-3">
                       <AppText variant="label">{group.label}</AppText>
                       <View className="rounded-md bg-app-accent-soft px-2 py-0.5 dark:bg-app-accent-soft-dark">
-                        <AppText variant="smallBold">
-                          {group.permissions.length}
-                        </AppText>
+                        <AppText variant="smallBold">{group.permissions.length}</AppText>
                       </View>
                     </View>
                     {group.permissions.map((permission) => (
                       <PermissionToggle
                         key={permission.id}
                         permission={permission}
-                        enabled={roleDraft.permissionKeys.includes(
-                          permission.key,
-                        )}
+                        enabled={roleDraft.permissionKeys.includes(permission.key)}
+                        disabled={!canEditRole}
                         onToggle={() => toggleDraftPermission(permission.key)}
                       />
                     ))}
@@ -456,11 +471,11 @@ export default function RoleDetailScreen() {
             )}
           </Surface>
 
-          {!isCreatingRole ? (
+          {!isCreatingRole && permissionsAccess.canReadUsers ? (
             <Surface className="gap-4 p-4">
               <SectionHeader icon={UserGroupIcon} label="Membros" />
 
-              {availableUsers.length > 0 ? (
+              {availableUsers.length > 0 && permissionsAccess.canUpdateUsers ? (
                 <View className="gap-3">
                   <SelectField
                     label="Adicionar usuário"
@@ -477,14 +492,14 @@ export default function RoleDetailScreen() {
                     disabled={!selectedUserId || setRoleMutation.isPending}
                   >
                     <AppIcon icon={UserAdd01Icon} size={18} color="#17201A" />
-                    <AppText className="font-bold text-app-text">
-                      Adicionar membro
-                    </AppText>
+                    <AppText className="font-bold text-app-text">Adicionar membro</AppText>
                   </Pressable>
                 </View>
+              ) : permissionsAccess.canUpdateUsers ? (
+                <AppText tone="muted">Todos os usuários já estão nesta função.</AppText>
               ) : (
                 <AppText tone="muted">
-                  Todos os usuários já estão nesta função.
+                  Você pode consultar membros, mas não alterar funções.
                 </AppText>
               )}
 
@@ -510,19 +525,17 @@ export default function RoleDetailScreen() {
                           {user.email}
                         </AppText>
                       </View>
-                      <Pressable
-                        accessibilityRole="button"
-                        accessibilityLabel={`Remover ${user.name || user.email} desta função`}
-                        onPress={() => removeUserFromRole(user)}
-                        disabled={setRoleMutation.isPending}
-                        className="h-10 w-10 items-center justify-center rounded-lg bg-app-surface dark:bg-app-surface-dark"
-                      >
-                        <AppIcon
-                          icon={UserRemove01Icon}
-                          size={18}
-                          color="#E11D48"
-                        />
-                      </Pressable>
+                      {permissionsAccess.canUpdateUsers ? (
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel={`Remover ${user.name || user.email} desta função`}
+                          onPress={() => removeUserFromRole(user)}
+                          disabled={setRoleMutation.isPending}
+                          className="h-10 w-10 items-center justify-center rounded-lg bg-app-surface dark:bg-app-surface-dark"
+                        >
+                          <AppIcon icon={UserRemove01Icon} size={18} color="#E11D48" />
+                        </Pressable>
+                      ) : null}
                     </View>
                   ))
                 )}
@@ -530,25 +543,29 @@ export default function RoleDetailScreen() {
             </Surface>
           ) : null}
 
-          <View className="gap-2">
-            <PrimaryButton
-              label={isCreatingRole ? "Criar função" : "Salvar função"}
-              loading={saveRoleMutation.isPending}
-              onPress={() => saveRoleMutation.mutate()}
-            />
-            {!isCreatingRole && role && !role.isSystem ? (
-              <Pressable
-                className="min-h-11 flex-row items-center justify-center gap-2 rounded-lg bg-app-background dark:bg-app-background-dark"
-                onPress={confirmDeleteRole}
-                disabled={deleteRoleMutation.isPending}
-              >
-                <AppIcon icon={Delete02Icon} size={18} color="#E11D48" />
-                <AppText className="font-bold text-app-danger dark:text-app-danger-dark">
-                  Remover função
-                </AppText>
-              </Pressable>
-            ) : null}
-          </View>
+          {canEditRole || permissionsAccess.canDeleteRoles ? (
+            <View className="gap-2">
+              {canEditRole ? (
+                <PrimaryButton
+                  label={isCreatingRole ? "Criar função" : "Salvar função"}
+                  loading={saveRoleMutation.isPending}
+                  onPress={() => saveRoleMutation.mutate()}
+                />
+              ) : null}
+              {!isCreatingRole && role && !role.isSystem && permissionsAccess.canDeleteRoles ? (
+                <Pressable
+                  className="min-h-11 flex-row items-center justify-center gap-2 rounded-lg bg-app-background dark:bg-app-background-dark"
+                  onPress={confirmDeleteRole}
+                  disabled={deleteRoleMutation.isPending}
+                >
+                  <AppIcon icon={Delete02Icon} size={18} color="#E11D48" />
+                  <AppText className="font-bold text-app-danger dark:text-app-danger-dark">
+                    Remover função
+                  </AppText>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
         </>
       )}
     </ScreenScroll>

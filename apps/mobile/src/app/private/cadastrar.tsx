@@ -20,6 +20,7 @@ import { ScreenScroll } from "@/components/ui/screen";
 import { Surface } from "@/components/ui/surface";
 import { UserForm } from "@/components/user-form";
 import { adminRolesQueryKey, listAdminRoles } from "@/lib/admin";
+import { appPermissions, useCurrentPermissions } from "@/lib/permissions";
 
 type RegisterType = "user" | "cat" | "adoptionCandidate" | "adoption";
 
@@ -59,10 +60,11 @@ const registerOptions: {
 
 export default function RegisterScreen() {
   const [selectedType, setSelectedType] = useState<RegisterType | null>(null);
+  const permissions = useCurrentPermissions();
   const { data: roles = [] } = useQuery({
     queryKey: adminRolesQueryKey,
     queryFn: listAdminRoles,
-    enabled: selectedType === "user",
+    enabled: selectedType === "user" && permissions.canCreateUsers,
   });
   const roleItems = roles.map((role) => ({
     label: role.name,
@@ -79,14 +81,26 @@ export default function RegisterScreen() {
     router.back();
   };
 
+  const visibleRegisterOptions = registerOptions.filter((option) => {
+    if (option.type === "user") {
+      return permissions.has(appPermissions.usersCreate);
+    }
+
+    if (option.type === "cat") {
+      return permissions.has(appPermissions.catsManage);
+    }
+
+    if (option.type === "adoptionCandidate") {
+      return permissions.has(appPermissions.adoptionCandidatesManage);
+    }
+
+    return permissions.has(appPermissions.adoptionsManage);
+  });
+
   const renderChooser = () => (
     <>
       <View className="flex-row items-start gap-2">
-        <Pressable
-          className="w-9 items-center pt-1"
-          onPress={handleBack}
-          hitSlop={8}
-        >
+        <Pressable className="w-9 items-center pt-1" onPress={handleBack} hitSlop={8}>
           <AppIcon icon={ArrowLeft01Icon} size={24} />
         </Pressable>
         <HeaderBlock
@@ -107,31 +121,35 @@ export default function RegisterScreen() {
       </Surface>
 
       <View className="gap-3">
-        {registerOptions.map((option) => (
-          <Pressable
-            key={option.type}
-            onPress={() => {
-              if (option.type === "adoption") {
-                router.push(newAdoptionHref);
-                return;
-              }
+        {visibleRegisterOptions.length === 0 ? (
+          <Surface className="p-4">
+            <AppText tone="muted">Você não tem permissões para criar registros.</AppText>
+          </Surface>
+        ) : (
+          visibleRegisterOptions.map((option) => (
+            <Pressable
+              key={option.type}
+              onPress={() => {
+                if (option.type === "adoption") {
+                  router.push(newAdoptionHref);
+                  return;
+                }
 
-              setSelectedType(option.type);
-            }}
-          >
-            <Surface className="min-h-[104px] flex-row items-center gap-4 p-4">
-              <View className="h-12 w-12 items-center justify-center rounded-lg bg-app-accent-soft dark:bg-app-accent-soft-dark">
-                <AppIcon icon={option.icon} size={24} />
-              </View>
-              <View className="flex-1 gap-1">
-                <AppText className="text-lg font-bold leading-6">
-                  {option.title}
-                </AppText>
-                <AppText tone="muted">{option.description}</AppText>
-              </View>
-            </Surface>
-          </Pressable>
-        ))}
+                setSelectedType(option.type);
+              }}
+            >
+              <Surface className="min-h-[104px] flex-row items-center gap-4 p-4">
+                <View className="h-12 w-12 items-center justify-center rounded-lg bg-app-accent-soft dark:bg-app-accent-soft-dark">
+                  <AppIcon icon={option.icon} size={24} />
+                </View>
+                <View className="flex-1 gap-1">
+                  <AppText className="text-lg font-bold leading-6">{option.title}</AppText>
+                  <AppText tone="muted">{option.description}</AppText>
+                </View>
+              </Surface>
+            </Pressable>
+          ))
+        )}
       </View>
     </>
   );
@@ -139,14 +157,11 @@ export default function RegisterScreen() {
   return (
     <ScreenScroll contentClassName="gap-3 pb-28 pt-3">
       {!selectedType ? renderChooser() : null}
-      {selectedType === "cat" ? <CatForm onBack={handleBack} /> : null}
-      {selectedType === "adoptionCandidate" ? (
-        <AdoptionCandidateForm
-          onBack={handleBack}
-          onSuccess={() => setSelectedType(null)}
-        />
+      {selectedType === "cat" && permissions.canManageCats ? <CatForm onBack={handleBack} /> : null}
+      {selectedType === "adoptionCandidate" && permissions.canManageAdoptionCandidates ? (
+        <AdoptionCandidateForm onBack={handleBack} onSuccess={() => setSelectedType(null)} />
       ) : null}
-      {selectedType === "user" ? (
+      {selectedType === "user" && permissions.canCreateUsers ? (
         <UserForm roles={roleItems} onBack={handleBack} />
       ) : null}
     </ScreenScroll>

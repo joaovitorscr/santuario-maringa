@@ -7,21 +7,15 @@ import {
   UserIcon,
   UserGroupIcon,
 } from "@hugeicons/core-free-icons";
-import { router, Tabs } from "expo-router";
-import React, { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Pressable,
-  View,
-} from "react-native";
+import { router, Tabs, usePathname } from "expo-router";
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Image, Modal, Pressable, View } from "react-native";
 
 import { AppText } from "@/components/ui/app-text";
 import { AppIcon } from "@/components/ui/icon";
 import { useTheme } from "@/hooks/use-theme";
 import { authClient } from "@/lib/auth-client";
+import { appPermissions, useCurrentPermissions } from "@/lib/permissions";
 
 function HomeTabIcon({
   focused,
@@ -32,9 +26,7 @@ function HomeTabIcon({
   color: string;
   accent: string;
 }) {
-  return (
-    <AppIcon icon={Home01Icon} size={20} color={focused ? accent : color} />
-  );
+  return <AppIcon icon={Home01Icon} size={20} color={focused ? accent : color} />;
 }
 
 function ListTabIcon({
@@ -46,9 +38,7 @@ function ListTabIcon({
   color: string;
   accent: string;
 }) {
-  return (
-    <AppIcon icon={CheckListIcon} size={20} color={focused ? accent : color} />
-  );
+  return <AppIcon icon={CheckListIcon} size={20} color={focused ? accent : color} />;
 }
 
 function CandidatesTabIcon({
@@ -60,9 +50,7 @@ function CandidatesTabIcon({
   color: string;
   accent: string;
 }) {
-  return (
-    <AppIcon icon={UserGroupIcon} size={20} color={focused ? accent : color} />
-  );
+  return <AppIcon icon={UserGroupIcon} size={20} color={focused ? accent : color} />;
 }
 
 function AdoptionsTabIcon({
@@ -74,13 +62,7 @@ function AdoptionsTabIcon({
   color: string;
   accent: string;
 }) {
-  return (
-    <AppIcon
-      icon={Agreement01Icon}
-      size={20}
-      color={focused ? accent : color}
-    />
-  );
+  return <AppIcon icon={Agreement01Icon} size={20} color={focused ? accent : color} />;
 }
 
 function RegisterTabIcon({
@@ -97,12 +79,7 @@ function RegisterTabIcon({
       className="mt-[-32px] h-12 w-12 items-center justify-center rounded-full"
       style={{ backgroundColor: accent }}
     >
-      <AppIcon
-        icon={Add01Icon}
-        size={24}
-        color={focused ? "#17201A" : color}
-        strokeWidth={2.2}
-      />
+      <AppIcon icon={Add01Icon} size={24} color={focused ? "#17201A" : color} strokeWidth={2.2} />
     </View>
   );
 }
@@ -116,15 +93,6 @@ function getUserInitials(name: string) {
     .join("");
 
   return initials || "U";
-}
-
-function hasAdminAccess(role?: string | null) {
-  return (
-    role
-      ?.split(",")
-      .map((item) => item.trim())
-      .includes("admin") ?? false
-  );
 }
 
 function UserHeaderAvatar({
@@ -151,11 +119,7 @@ function UserHeaderAvatar({
       }}
     >
       {image ? (
-        <Image
-          source={{ uri: image }}
-          accessibilityIgnoresInvertColors
-          className="h-full w-full"
-        />
+        <Image source={{ uri: image }} accessibilityIgnoresInvertColors className="h-full w-full" />
       ) : (
         <AppText className="text-sm font-extrabold leading-5 text-app-accent dark:text-app-accent-dark">
           {getUserInitials(name)}
@@ -298,11 +262,74 @@ function UserMenuDialog({
 
 export default function AppTabs() {
   const colors = useTheme();
+  const pathname = usePathname();
   const { data: session } = authClient.useSession();
+  const permissions = useCurrentPermissions();
   const userName = session?.user.name || session?.user.email || "Usuário";
-  const canManageUsers = hasAdminAccess(session?.user.role);
+  const canManageUsers = permissions.hasAny([appPermissions.usersRead, appPermissions.rolesRead]);
+  const canUseRegister = permissions.hasAny([
+    appPermissions.usersCreate,
+    appPermissions.catsManage,
+    appPermissions.adoptionCandidatesManage,
+    appPermissions.adoptionsManage,
+  ]);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  useEffect(() => {
+    if (!session?.user || permissions.isLoading || permissions.isFetching) {
+      return;
+    }
+
+    const routeRules = [
+      {
+        matches: ["/private/gatos", "/private/residente/"],
+        allowed: permissions.canManageCats,
+      },
+      {
+        matches: ["/private/cadastrar"],
+        allowed: canUseRegister,
+      },
+      {
+        matches: ["/private/candidatos", "/private/candidato/"],
+        allowed: permissions.canManageAdoptionCandidates,
+      },
+      {
+        matches: ["/private/adocoes", "/private/adocao/"],
+        allowed: permissions.canManageAdoptions,
+      },
+      {
+        matches: ["/private/usuarios"],
+        allowed: canManageUsers,
+      },
+      {
+        matches: ["/private/funcao/"],
+        allowed: pathname.startsWith("/private/funcao/nova")
+          ? permissions.canCreateRoles
+          : permissions.canReadRoles,
+      },
+    ];
+
+    const isForbiddenRoute = routeRules.some(
+      (rule) => rule.matches.some((path) => pathname.startsWith(path)) && !rule.allowed,
+    );
+
+    if (isForbiddenRoute) {
+      router.replace("/private");
+    }
+  }, [
+    canManageUsers,
+    canUseRegister,
+    pathname,
+    permissions.canManageAdoptionCandidates,
+    permissions.canManageAdoptions,
+    permissions.canManageCats,
+    permissions.canCreateRoles,
+    permissions.canReadRoles,
+    permissions.isFetching,
+    permissions.isLoading,
+    session?.user,
+  ]);
 
   const handleProfilePress = () => {
     setIsUserMenuOpen(false);
@@ -321,10 +348,7 @@ export default function AppTabs() {
       const result = await authClient.signOut();
 
       if (result.error) {
-        Alert.alert(
-          "Falha ao sair",
-          result.error.message || "Tente novamente.",
-        );
+        Alert.alert("Falha ao sair", result.error.message || "Tente novamente.");
         return;
       }
 
@@ -407,11 +431,7 @@ export default function AppTabs() {
         options={{
           title: "Início",
           tabBarIcon: ({ color, focused }) => (
-            <HomeTabIcon
-              accent={colors.accent}
-              color={color}
-              focused={focused}
-            />
+            <HomeTabIcon accent={colors.accent} color={color} focused={focused} />
           ),
         }}
       />
@@ -419,13 +439,10 @@ export default function AppTabs() {
       <Tabs.Screen
         name="gatos"
         options={{
+          href: permissions.canManageCats ? undefined : null,
           title: "Gatos",
           tabBarIcon: ({ color, focused }) => (
-            <ListTabIcon
-              accent={colors.accent}
-              color={color}
-              focused={focused}
-            />
+            <ListTabIcon accent={colors.accent} color={color} focused={focused} />
           ),
         }}
       />
@@ -433,13 +450,10 @@ export default function AppTabs() {
       <Tabs.Screen
         name="cadastrar"
         options={{
+          href: canUseRegister ? undefined : null,
           title: "",
           tabBarIcon: ({ color, focused }) => (
-            <RegisterTabIcon
-              accent={colors.accent}
-              color={color}
-              focused={focused}
-            />
+            <RegisterTabIcon accent={colors.accent} color={color} focused={focused} />
           ),
         }}
       />
@@ -447,13 +461,10 @@ export default function AppTabs() {
       <Tabs.Screen
         name="candidatos"
         options={{
+          href: permissions.canManageAdoptionCandidates ? undefined : null,
           title: "Candidatos",
           tabBarIcon: ({ color, focused }) => (
-            <CandidatesTabIcon
-              accent={colors.accent}
-              color={color}
-              focused={focused}
-            />
+            <CandidatesTabIcon accent={colors.accent} color={color} focused={focused} />
           ),
         }}
       />
@@ -461,13 +472,10 @@ export default function AppTabs() {
       <Tabs.Screen
         name="adocoes"
         options={{
+          href: permissions.canManageAdoptions ? undefined : null,
           title: "Adoções",
           tabBarIcon: ({ color, focused }) => (
-            <AdoptionsTabIcon
-              accent={colors.accent}
-              color={color}
-              focused={focused}
-            />
+            <AdoptionsTabIcon accent={colors.accent} color={color} focused={focused} />
           ),
         }}
       />
@@ -481,20 +489,11 @@ export default function AppTabs() {
 
       <Tabs.Screen name="candidato/[id]" options={{ href: null }} />
 
-      <Tabs.Screen
-        name="adocao/nova"
-        options={{ href: null, title: "Nova adoção" }}
-      />
+      <Tabs.Screen name="adocao/nova" options={{ href: null, title: "Nova adoção" }} />
 
-      <Tabs.Screen
-        name="usuarios"
-        options={{ href: null, title: "Usuários" }}
-      />
+      <Tabs.Screen name="usuarios" options={{ href: null, title: "Usuários" }} />
 
-      <Tabs.Screen
-        name="funcao/[id]"
-        options={{ href: null, title: "Função" }}
-      />
+      <Tabs.Screen name="funcao/[id]" options={{ href: null, title: "Função" }} />
 
       <Tabs.Screen name="perfil" options={{ href: null, title: "Perfil" }} />
     </Tabs>
