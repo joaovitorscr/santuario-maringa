@@ -4,6 +4,12 @@ import { adminPermission, adminRole, adminRolePermission } from "@/db/schema/adm
 import { session } from "@/db/schema/session";
 import { user as userTable } from "@/db/schema/user";
 import { buildApiErrorResponse, buildApiResponse } from "@/contracts/base";
+import {
+  ensureDefaultRolesAndPermissions,
+  getRolePermissions,
+  hasAnyPermission,
+  hasPermission,
+} from "@/lib/app-permissions";
 import { and, count, eq, inArray } from "drizzle-orm";
 import { type Context, Hono } from "hono";
 import { z } from "zod";
@@ -15,99 +21,6 @@ type AdminEnv = {
 };
 
 const app = new Hono<AdminEnv>();
-
-const defaultPermissions = [
-  {
-    key: "users.read",
-    label: "Listar usuários",
-    description: "Ver usuários e suas funções.",
-  },
-  {
-    key: "users.create",
-    label: "Criar usuários",
-    description: "Cadastrar novas contas.",
-  },
-  {
-    key: "users.update",
-    label: "Editar usuários",
-    description: "Alterar dados e funções.",
-  },
-  {
-    key: "users.delete",
-    label: "Remover usuários",
-    description: "Excluir contas sem vínculos.",
-  },
-  {
-    key: "roles.read",
-    label: "Listar funções",
-    description: "Ver funções e permissões.",
-  },
-  {
-    key: "roles.create",
-    label: "Criar funções",
-    description: "Adicionar novas funções.",
-  },
-  {
-    key: "roles.update",
-    label: "Editar funções",
-    description: "Alterar nomes e permissões.",
-  },
-  {
-    key: "roles.delete",
-    label: "Remover funções",
-    description: "Excluir funções sem usuários.",
-  },
-  {
-    key: "cats.manage",
-    label: "Gerenciar gatos",
-    description: "Criar e editar residentes.",
-  },
-  {
-    key: "adoptions.manage",
-    label: "Gerenciar adoções",
-    description: "Criar e editar adoções.",
-  },
-  {
-    key: "adoption_candidates.manage",
-    label: "Gerenciar candidatos",
-    description: "Criar e editar candidatos à adoção.",
-  },
-] as const;
-
-const defaultRoles = [
-  {
-    slug: "admin",
-    name: "Administrador",
-    description: "Controle completo de usuários, funções, permissões e dados do app.",
-    permissionKeys: defaultPermissions.map((permission) => permission.key),
-  },
-  {
-    slug: "manager",
-    name: "Gestor",
-    description: "Pode gerenciar a operação e apoiar a administração de usuários.",
-    permissionKeys: [
-      "users.read",
-      "users.create",
-      "users.update",
-      "roles.read",
-      "cats.manage",
-      "adoptions.manage",
-      "adoption_candidates.manage",
-    ],
-  },
-  {
-    slug: "volunteer",
-    name: "Voluntário",
-    description: "Acesso operacional para o cuidado diário.",
-    permissionKeys: ["cats.manage", "adoptions.manage", "adoption_candidates.manage"],
-  },
-  {
-    slug: "user",
-    name: "Usuário",
-    description: "Acesso básico sem permissões administrativas.",
-    permissionKeys: [],
-  },
-] as const;
 
 const RoleMutationSchema = z.object({
   data: z.object({
@@ -123,6 +36,40 @@ const RolePatchSchema = z.object({
   }),
 });
 
+const UserCreateSchema = z.object({
+  data: z.object({
+    name: z.string().trim().min(2),
+    username: z
+      .string()
+      .trim()
+      .min(3)
+      .max(30)
+      .regex(/^[a-zA-Z0-9_]+$/)
+      .transform((value) => value.toLowerCase()),
+    email: z
+      .string()
+      .trim()
+      .email()
+      .transform((value) => value.toLowerCase()),
+    password: z.string().min(8),
+    role: z.string().trim().min(1),
+  }),
+});
+
+const UserPatchSchema = z.object({
+  data: z
+    .object({
+      name: z.string().trim().min(2),
+      email: z
+        .string()
+        .trim()
+        .email()
+        .transform((value) => value.toLowerCase()),
+      role: z.string().trim().min(1),
+    })
+    .partial(),
+});
+
 function forbidden() {
   return buildApiErrorResponse({
     code: "FORBIDDEN",
@@ -135,60 +82,6 @@ function invalidRequest(message: string) {
     code: "INVALID_ADMIN_REQUEST",
     message,
   });
-}
-
-function getPrimaryRoles(role?: string | null) {
-  return (
-    role
-      ?.split(",")
-      .map((item) => item.trim().toLowerCase())
-      .filter(Boolean) ?? []
-  );
-}
-
-async function getRolePermissions(role?: string | null) {
-  await ensureDefaultRolesAndPermissions();
-
-  const roleSlugs = getPrimaryRoles(role);
-
-  if (roleSlugs.includes("admin")) {
-    return defaultPermissions.map((permission) => permission.key);
-  }
-
-  if (roleSlugs.length === 0) {
-    return [];
-  }
-
-  const roles = await db.query.adminRole.findMany({
-    where: inArray(adminRole.slug, roleSlugs),
-    with: {
-      rolePermissions: {
-        with: {
-          permission: true,
-        },
-      },
-    },
-  });
-
-  return Array.from(
-    new Set(
-      roles.flatMap((roleItem) =>
-        roleItem.rolePermissions
-          .map((rolePermission) => rolePermission.permission?.key)
-          .filter((key): key is string => Boolean(key)),
-      ),
-    ),
-  ).toSorted();
-}
-
-async function hasPermission(role: string | null | undefined, permission: string) {
-  return (await getRolePermissions(role)).includes(permission);
-}
-
-async function hasAnyPermission(role: string | null | undefined, permissions: string[]) {
-  const userPermissions = await getRolePermissions(role);
-
-  return permissions.some((permission) => userPermissions.includes(permission));
 }
 
 async function requirePermission(c: Context<AdminEnv>, permission: string) {
@@ -245,62 +138,6 @@ async function generateRoleSlug(name: string) {
   return `${baseSlug.slice(0, 31)}-${crypto.randomUUID().slice(0, 8)}`;
 }
 
-async function ensureDefaultRolesAndPermissions() {
-  const now = new Date();
-
-  await db
-    .insert(adminPermission)
-    .values(
-      defaultPermissions.map((permission) => ({
-        id: crypto.randomUUID(),
-        key: permission.key,
-        label: permission.label,
-        description: permission.description,
-        createdAt: now,
-        updatedAt: now,
-      })),
-    )
-    .onConflictDoNothing({ target: adminPermission.key });
-
-  await db
-    .insert(adminRole)
-    .values(
-      defaultRoles.map((role) => ({
-        id: crypto.randomUUID(),
-        slug: role.slug,
-        name: role.name,
-        description: role.description,
-        isSystem: true,
-        createdAt: now,
-        updatedAt: now,
-      })),
-    )
-    .onConflictDoNothing({ target: adminRole.slug });
-
-  const roles = await db.query.adminRole.findMany();
-  const permissions = await db.query.adminPermission.findMany();
-
-  for (const defaultRole of defaultRoles) {
-    const role = roles.find((item) => item.slug === defaultRole.slug);
-
-    if (!role || defaultRole.permissionKeys.length === 0) {
-      continue;
-    }
-
-    const rolePermissions = permissions
-      .filter((permission) => defaultRole.permissionKeys.includes(permission.key as never))
-      .map((permission) => ({
-        roleId: role.id,
-        permissionId: permission.id,
-        createdAt: now,
-      }));
-
-    if (rolePermissions.length > 0) {
-      await db.insert(adminRolePermission).values(rolePermissions).onConflictDoNothing();
-    }
-  }
-}
-
 async function serializeRoles() {
   await ensureDefaultRolesAndPermissions();
 
@@ -336,18 +173,119 @@ async function serializeRoles() {
     userCount: countByRole.get(role.slug) ?? 0,
     createdAt: role.createdAt.toISOString(),
     updatedAt: role.updatedAt.toISOString(),
-    permissions: role.rolePermissions
-      .map((rolePermission) => rolePermission.permission)
-      .toSorted((left, right) => left.label.localeCompare(right.label))
-      .map((permission) => ({
+    permissions: (() => {
+      const permissions = role.rolePermissions.map((rolePermission) => rolePermission.permission);
+      const sortedPermissions = permissions.reduce<typeof permissions>((items, permission) => {
+        const insertionIndex = items.findIndex(
+          (item) => item.label.localeCompare(permission.label) > 0,
+        );
+
+        if (insertionIndex === -1) {
+          items.push(permission);
+          return items;
+        }
+
+        items.splice(insertionIndex, 0, permission);
+        return items;
+      }, []);
+
+      return sortedPermissions.map((permission) => ({
         id: permission.id,
         key: permission.key,
         label: permission.label,
         description: permission.description,
         createdAt: permission.createdAt.toISOString(),
         updatedAt: permission.updatedAt.toISOString(),
-      })),
+      }));
+    })(),
   }));
+}
+
+function serializeUser(record: typeof userTable.$inferSelect) {
+  return {
+    id: record.id,
+    name: record.name,
+    email: record.email,
+    username: record.username,
+    displayUsername: record.displayUsername,
+    emailVerified: record.emailVerified,
+    image: record.image,
+    role: record.role,
+    banned: record.banned,
+    banReason: record.banReason,
+    banExpires: record.banExpires?.toISOString() ?? null,
+    createdAt: record.createdAt.toISOString(),
+    updatedAt: record.updatedAt.toISOString(),
+  };
+}
+
+async function serializeUsers() {
+  const users = await db.query.user.findMany({
+    orderBy: (fields, { asc }) => [asc(fields.name), asc(fields.email)],
+  });
+
+  return users.map(serializeUser);
+}
+
+async function roleExists(slug: string) {
+  await ensureDefaultRolesAndPermissions();
+
+  if (slug === "admin") {
+    return true;
+  }
+
+  const role = await db.query.adminRole.findFirst({
+    where: eq(adminRole.slug, slug),
+  });
+
+  return Boolean(role);
+}
+
+async function createUserWithPassword(data: z.infer<typeof UserCreateSchema>["data"]) {
+  if (!(await roleExists(data.role))) {
+    throw new Error("Função informada não existe.");
+  }
+
+  const now = new Date();
+  const userId = crypto.randomUUID();
+  const passwordHash = await Bun.password.hash(data.password);
+
+  return db.transaction(async (tx) => {
+    const [createdUser] = await tx
+      .insert(userTable)
+      .values({
+        id: userId,
+        name: data.name,
+        email: data.email,
+        username: data.username,
+        displayUsername: data.username,
+        emailVerified: false,
+        image: null,
+        role: data.role,
+        banned: false,
+        banReason: null,
+        banExpires: null,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+
+    if (!createdUser) {
+      throw new Error("Não foi possível criar o usuário.");
+    }
+
+    await tx.insert(account).values({
+      id: crypto.randomUUID(),
+      accountId: userId,
+      providerId: "credential",
+      userId,
+      password: passwordHash,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return createdUser;
+  });
 }
 
 async function setRolePermissions(roleId: string, permissionKeys: string[]) {
@@ -589,6 +527,91 @@ app.get("/admin/permissions", async (c) => {
     ),
     200,
   );
+});
+
+app.get("/admin/users", async (c) => {
+  const permissionError = await requirePermission(c, "users.read");
+  if (permissionError) {
+    return permissionError;
+  }
+
+  return c.json(buildApiResponse(await serializeUsers()), 200);
+});
+
+app.post("/admin/users", async (c) => {
+  const permissionError = await requirePermission(c, "users.create");
+  if (permissionError) {
+    return permissionError;
+  }
+
+  const parsed = UserCreateSchema.safeParse(await c.req.json().catch(() => null));
+
+  if (!parsed.success) {
+    return c.json(invalidRequest("Informe dados válidos para criar o usuário."), 400);
+  }
+
+  try {
+    const createdUser = await createUserWithPassword(parsed.data.data);
+
+    return c.json(buildApiResponse(serializeUser(createdUser)), 201);
+  } catch (error) {
+    return c.json(
+      invalidRequest(error instanceof Error ? error.message : "Não foi possível criar o usuário."),
+      400,
+    );
+  }
+});
+
+app.patch("/admin/users/:id", async (c) => {
+  const permissionError = await requirePermission(c, "users.update");
+  if (permissionError) {
+    return permissionError;
+  }
+
+  const parsed = UserPatchSchema.safeParse(await c.req.json().catch(() => null));
+
+  if (!parsed.success) {
+    return c.json(invalidRequest("Informe dados válidos para atualizar o usuário."), 400);
+  }
+
+  const userId = c.req.param("id");
+  const existingUser = await db.query.user.findFirst({
+    where: eq(userTable.id, userId),
+  });
+
+  if (!existingUser) {
+    return c.json(
+      buildApiErrorResponse({
+        code: "USER_NOT_FOUND",
+        message: "Usuário não encontrado.",
+      }),
+      404,
+    );
+  }
+
+  const payload = parsed.data.data;
+
+  if (payload.role && !(await roleExists(payload.role))) {
+    return c.json(invalidRequest("Função informada não existe."), 400);
+  }
+
+  const [updatedUser] = await db
+    .update(userTable)
+    .set({
+      name: payload.name,
+      email: payload.email,
+      role: payload.role,
+      updatedAt: new Date(),
+    })
+    .where(eq(userTable.id, userId))
+    .returning()
+    .catch(() => []);
+
+  if (!updatedUser) {
+    return c.json(invalidRequest("Não foi possível atualizar o usuário."), 400);
+  }
+
+  return c.json(buildApiResponse(serializeUser(updatedUser)), 200);
 });
 
 app.delete("/admin/users/:id", async (c) => {

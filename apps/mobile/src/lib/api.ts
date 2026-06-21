@@ -132,6 +132,22 @@ export type ApiAdminRole = {
   permissions: ApiAdminPermission[];
 };
 
+export type ApiAdminUser = {
+  id: string;
+  name: string;
+  email: string;
+  username: string | null;
+  displayUsername: string | null;
+  emailVerified: boolean;
+  image: string | null;
+  role: string | null;
+  banned: boolean | null;
+  banReason: string | null;
+  banExpires: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type ApiCurrentPermissions = {
   role: string | null;
   permissions: string[];
@@ -147,6 +163,24 @@ type CreateAdminRolePayload = {
 
 type UpdateAdminRolePayload = {
   data: Partial<CreateAdminRolePayload["data"]>;
+};
+
+type CreateAdminUserPayload = {
+  data: {
+    name: string;
+    username: string;
+    email: string;
+    password: string;
+    role: string;
+  };
+};
+
+type UpdateAdminUserPayload = {
+  data: {
+    name?: string;
+    email?: string;
+    role?: string;
+  };
 };
 
 export const apiContract = new Hono()
@@ -191,6 +225,15 @@ export const apiContract = new Hono()
   })
   .delete("/admin/roles/:id", (c) => c.body(null, 204))
   .get("/admin/permissions", (c) => c.json({} as ApiSuccessResponse<ApiAdminPermission[]>))
+  .get("/admin/users", (c) => c.json({} as ApiSuccessResponse<ApiAdminUser[]>))
+  .post("/admin/users", async (c) => {
+    await c.req.json<CreateAdminUserPayload>();
+    return c.json({} as ApiSuccessResponse<ApiAdminUser>, 201);
+  })
+  .patch("/admin/users/:id", async (c) => {
+    await c.req.json<UpdateAdminUserPayload>();
+    return c.json({} as ApiSuccessResponse<ApiAdminUser>);
+  })
   .delete("/admin/users/:id", (c) => c.body(null, 204));
 
 export class ApiError extends Error {

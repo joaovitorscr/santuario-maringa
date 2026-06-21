@@ -14,7 +14,7 @@ export const registerDocsRoutes = <E extends Env, S extends Schema, B extends st
     return c.json(await getOpenApiDocument(new URL(c.req.url).origin));
   });
 
-  app.get("/scalar", Scalar({ url: "/doc", theme: "green", pageTitle: "Santuário Maringa" }));
+  app.get("/scalar", Scalar({ url: "/doc", theme: "kepler", pageTitle: "Santuário Maringa" }));
 
   app.get("/llms.txt", async (c) => {
     return c.text(await getLlmsMarkdown(new URL(c.req.url).origin));

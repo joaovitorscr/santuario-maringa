@@ -1,5 +1,5 @@
 import { authClient } from "@/lib/auth-client";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "@react-navigation/native";
 import * as NavigationBar from "expo-navigation-bar";
 import { Stack } from "expo-router";
@@ -25,6 +25,16 @@ export default function RootLayout() {
   const isLoggedIn = !!session;
 
   useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      focusManager.setFocused(state === "active");
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
     if (Platform.OS !== "android") {
       return;
     }
@@ -45,11 +55,6 @@ export default function RootLayout() {
       subscription.remove();
     };
   }, []);
-
-  console.log({
-    isLoggedIn,
-    session,
-  });
 
   return (
     <QueryClientProvider client={queryClient}>

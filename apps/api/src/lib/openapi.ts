@@ -7,6 +7,9 @@ type AuthOpenApiDocument = Awaited<ReturnType<typeof auth.api.generateOpenAPISch
 type AppOpenApiDocument<TApp extends OpenAPIHono<any, any, any>> = ReturnType<
   TApp["getOpenAPI31Document"]
 >;
+type OpenApiDocument = AppOpenApiDocument<OpenAPIHono>;
+type OpenApiComponents = NonNullable<OpenApiDocument["components"]>;
+type ScalarOpenApiDocument = Parameters<typeof createMarkdownFromOpenApi>[0];
 
 const prefixPath = (prefix: string, path: string) => {
   if (!prefix || prefix === "/") {
@@ -18,15 +21,17 @@ const prefixPath = (prefix: string, path: string) => {
 };
 
 const mergeOpenApiDocuments = (
-  appDocument: AppOpenApiDocument<OpenAPIHono>,
+  appDocument: OpenApiDocument,
   authDocument: AuthOpenApiDocument,
-): AppOpenApiDocument<OpenAPIHono> => {
+): OpenApiDocument => {
   const authPaths = Object.fromEntries(
     Object.entries(authDocument.paths).map(([path, pathItem]) => [
       prefixPath(AUTH_BASE_PATH, path),
       pathItem,
     ]),
-  );
+  ) as unknown as OpenApiDocument["paths"];
+  const authComponents = (authDocument.components ?? {}) as unknown as Partial<OpenApiComponents>;
+  const appComponents = appDocument.components ?? {};
 
   const authTags = authDocument.tags ?? [];
   const appTags = appDocument.tags ?? [];
@@ -46,30 +51,30 @@ const mergeOpenApiDocuments = (
       ...authPaths,
     },
     components: {
-      ...authDocument.components,
-      ...appDocument.components,
+      ...authComponents,
+      ...appComponents,
       schemas: {
-        ...(authDocument.components?.schemas ?? {}),
-        ...(appDocument.components?.schemas ?? {}),
+        ...authComponents.schemas,
+        ...appComponents.schemas,
       },
       securitySchemes: {
-        ...(authDocument.components?.securitySchemes ?? {}),
-        ...(appDocument.components?.securitySchemes ?? {}),
+        ...authComponents.securitySchemes,
+        ...appComponents.securitySchemes,
       },
       responses: {
-        ...(authDocument.components?.responses ?? {}),
-        ...(appDocument.components?.responses ?? {}),
+        ...authComponents.responses,
+        ...appComponents.responses,
       },
       parameters: {
-        ...(authDocument.components?.parameters ?? {}),
-        ...(appDocument.components?.parameters ?? {}),
+        ...authComponents.parameters,
+        ...appComponents.parameters,
       },
       requestBodies: {
-        ...(authDocument.components?.requestBodies ?? {}),
-        ...(appDocument.components?.requestBodies ?? {}),
+        ...authComponents.requestBodies,
+        ...appComponents.requestBodies,
       },
     },
-  };
+  } as OpenApiDocument;
 };
 
 export const createOpenApiServices = <E extends Env, S extends Schema, B extends string>(
@@ -107,7 +112,9 @@ export const createOpenApiServices = <E extends Env, S extends Schema, B extends
       return cachedMarkdown;
     }
 
-    const markdown = await createMarkdownFromOpenApi(await getOpenApiDocument(origin));
+    const markdown = await createMarkdownFromOpenApi(
+      (await getOpenApiDocument(origin)) as unknown as ScalarOpenApiDocument,
+    );
     llmsMarkdownByOrigin.set(origin, markdown);
     return markdown;
   };
