@@ -270,6 +270,10 @@ async function createUserWithPassword(data: z.infer<typeof UserCreateSchema>["da
       })
       .returning();
 
+    if (!createdUser) {
+      throw new Error("Não foi possível criar o usuário.");
+    }
+
     await tx.insert(account).values({
       id: crypto.randomUUID(),
       accountId: userId,

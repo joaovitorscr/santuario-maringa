@@ -293,6 +293,16 @@ app.openapi(createAdoptionCandidateRoute, async (c) => {
     })
     .returning();
 
+  if (!record) {
+    return c.json(
+      buildApiErrorResponse({
+        code: "ADOPTION_CANDIDATE_CREATE_FAILED",
+        message: "Created adoption candidate could not be loaded",
+      }),
+      500,
+    );
+  }
+
   return c.json(buildApiResponse(serializeAdoptionCandidate(record)), 201);
 });
 

@@ -356,6 +356,16 @@ app.openapi(createCatRoute, async (c) => {
     })
     .returning({ id: cat.id });
 
+  if (!createdRecord) {
+    return c.json(
+      buildApiErrorResponse({
+        code: "CAT_CREATE_FAILED",
+        message: "Created cat could not be loaded",
+      }),
+      500,
+    );
+  }
+
   const record = await getCatById(createdRecord.id);
 
   if (!record) {

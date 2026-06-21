@@ -254,6 +254,16 @@ app.openapi(createAdoptionRoute, async (c) => {
     return [newAdoption];
   });
 
+  if (!createdRecord) {
+    return c.json(
+      buildApiErrorResponse({
+        code: "ADOPTION_CREATE_FAILED",
+        message: "Created adoption could not be loaded",
+      }),
+      500,
+    );
+  }
+
   const record = await getAdoptionById(createdRecord.id);
 
   if (!record) {
